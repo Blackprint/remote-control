@@ -135,7 +135,10 @@ class RemoteSketch extends RemoteEngineClient {
 
 		instance.on('cable.created', cableCreated);
 		function cableCreated({ port, cable }){
-			that._onSyncOut({uid, w:'skc', t:'ccd'});
+			if(that._skipEvent) return;
+			let i = ifaceList.indexOf(port.iface);
+
+			that._onSyncOut({uid, w:'skc', t:'ccd', i, n: port.name, s: port.source});
 
 			$window.once('pointerup', () => {
 				if(cable._evDisconnected) return;
@@ -143,12 +146,13 @@ class RemoteSketch extends RemoteEngineClient {
 				let list = container.cableScope.list;
 				let ci = list.indexOf(cable);
 
-				that._onSyncOut({uid, w:'skc', t:'ccu', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y, ci});
+				that._onSyncOut({uid, w:'skc', t:'ccu', x:cable.head2[0], y:cable.head2[1], ci});
 			}, {capture: true});
 		}
 
 		instance.on('cable.created.branch', cableCreatedBranch);
 		function cableCreatedBranch({ cable }){
+			if(that._skipEvent) return;
 			let list = container.cableScope.list;
 
 			let pci = list.indexOf(cable.parentCable);
@@ -158,12 +162,13 @@ class RemoteSketch extends RemoteEngineClient {
 				if(cable._evDisconnected) return;
 				let ci = list.indexOf(cable);
 
-				that._onSyncOut({uid, w:'skc', t:'ccbu', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y, pci, ci});
+				that._onSyncOut({uid, w:'skc', t:'ccbu', x:cable.head2[0], y:cable.head2[1], pci, ci});
 			}, {capture: true});
 		}
 
 		instance.on('cable.deleted', cableDeleted);
 		function cableDeleted({ cable }){
+			if(that._skipEvent) return;
 			let list = container.cableScope.list;
 			let ci = list.indexOf(cable);
 
@@ -185,11 +190,14 @@ class RemoteSketch extends RemoteEngineClient {
 	onSyncIn(data){
 		data = super.onSyncIn(data);
 		if(data == null) return;
-		if(window.aaa) console.log(data);
+
+		let iface;
+		if(data.i != null){
+			iface = this.instance.ifaceList[data.i];
+			if(iface == null) throw new Error("Node list was not synced");
+		}
 
 		if(data.w === 'kd'){ // keydown
-			let { ifaceList } = this.instance;
-			let iface = ifaceList[data.i];
 			let el = elementChildIndexes(data.s, iface.$el[0].children[0]);
 
 			el.value = data.fd;
@@ -206,20 +214,19 @@ class RemoteSketch extends RemoteEngineClient {
 			}
 			else if(data.t.slice(0, 1) === 'n'){ // node
 				let container = this.instance.scope('container');
-				let { ifaceList } = this.instance;
-				let iface;
-
-				if(data.i != null){
-					iface = ifaceList[data.i];
-					if(iface == null) throw new Error("Node list was not synced");
-				}
 
 				if(data.t === 'npd'){ // node pointer down
 					// ToDo
 				}
 				else if(data.t === 'npu'){ // node pointer up
-					iface.x = data.x;
-					iface.y = data.y;
+					let mx = (data.x - iface.x) * devicePixelRatio * container.scale;
+					let my = (data.y - iface.y) * devicePixelRatio * container.scale;
+
+					iface.moveNode({
+						stopPropagation(){}, preventDefault(){},
+						movementX: mx,
+						movementY: my
+					});
 				}
 			}
 			else if(data.t.slice(0, 1) === 'c'){ // cable
@@ -246,7 +253,15 @@ class RemoteSketch extends RemoteEngineClient {
 				}
 
 				else if(data.t === 'ccd'){ // cable created down
-					// ToDo
+					let portList = iface[data.s];
+					let port = portList[data.n];
+
+					let el = portList._list.getElement(port);
+
+					this._skipEvent = true;
+					let rect = port.findPortElement(el).getBoundingClientRect();
+					let cable = port.createCable(rect);
+					this._skipEvent = false;
 				}
 				else if(data.t === 'ccu'){ // cable created up
 					cable.head2[0] = data.x;
@@ -255,7 +270,7 @@ class RemoteSketch extends RemoteEngineClient {
 
 				else if(data.t === 'ccbd'){ // cable created branch down
 					this._skipEvent = true;
-					cable.createBranch();
+					parentCable.createBranch();
 					this._skipEvent = false;
 				}
 				else if(data.t === 'ccbu'){ // cable created branch up
@@ -265,6 +280,7 @@ class RemoteSketch extends RemoteEngineClient {
 
 				else if(data.t === 'cd'){ // cable deleted
 					this._skipEvent = true;
+					cable._evDisconnected = true;
 					cable.disconnect();
 					this._skipEvent = false;
 				}

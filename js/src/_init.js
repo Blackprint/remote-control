@@ -127,8 +127,11 @@ class RemoteEngineClient {
 
 		instance.on('cable.connect', ({ cable }) => {
 			if(this._skipEvent) return;
+			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
+
 			this._onSyncOut({
 				w:'c',
+				ci,
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
 				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
 				t:'c'
@@ -136,8 +139,11 @@ class RemoteEngineClient {
 		});
 		instance.on('cable.disconnect', ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
+			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
+
 			this._onSyncOut({
 				w:'c',
+				ci,
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
 				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
 				t:'d'
@@ -203,7 +209,19 @@ class RemoteEngineClient {
 				let outputPort = ifaceList[out.i][out.s][out.n];
 
 				this._skipEvent = true;
-				inputPort.connectPort(outputPort);
+
+				if(data.ci !== -1){
+					let cable = this.instance.scope('cables').list[data.ci];
+
+					if(cable == null)
+						throw new Error("Cable list is not synced");
+
+					if(cable.source === 'input')
+						outputPort.connectCable(cable);
+					else inputPort.connectCable(cable);
+				}
+				else inputPort.connectPort(outputPort);
+
 				this._skipEvent = false;
 				return;
 			}
