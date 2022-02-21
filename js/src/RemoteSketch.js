@@ -151,18 +151,21 @@ class RemoteSketch extends RemoteEngineClient {
 		}
 
 		instance.on('cable.created.branch', cableCreatedBranch);
-		function cableCreatedBranch({ cable }){
+		function cableCreatedBranch(ev){
 			if(that._skipEvent) return;
 			let list = container.cableScope.list;
+			let cable = ev.cable; // don't destructure newCable here
 
-			let pci = list.indexOf(cable.parentCable);
-			that._onSyncOut({uid, w:'skc', t:'ccbd', pci});
+			let ci = list.indexOf(ev.cable);
+			that._onSyncOut({uid, w:'skc', t:'ccbd', ci});
 
 			$window.once('pointerup', () => {
 				if(cable._evDisconnected) return;
 				let ci = list.indexOf(cable);
+				let newCable = ev.newCable;
+				let nci = list.indexOf(newCable);
 
-				that._onSyncOut({uid, w:'skc', t:'ccbu', x:cable.head2[0], y:cable.head2[1], pci, ci});
+				that._onSyncOut({uid, w:'skc', t:'ccbu', x:newCable.head2[0], y:newCable.head2[1], nci, ci});
 			}, {capture: true});
 		}
 
@@ -232,24 +235,31 @@ class RemoteSketch extends RemoteEngineClient {
 			else if(data.t.slice(0, 1) === 'c'){ // cable
 				let container = this.instance.scope('container');
 				let cables = container.cableScope;
-				let cable, parentCable;
+				let cable, newCable;
 
 				if(data.ci != null){
 					cable = cables.list[data.ci];
 					if(cable == null) throw new Error("Cable list was not synced");
 				}
 
-				if(data.pci != null){
-					parentCable = cables.list[data.pci];
-					if(parentCable == null) throw new Error("Cable list was not synced");
+				if(data.nci != null){
+					newCable = cables.list[data.nci];
+					if(newCable == null) throw new Error("Cable list was not synced");
 				}
 
 				if(data.t === 'cpd'){ // cable pointer down
 					// ToDo
 				}
 				else if(data.t === 'cpu'){ // cable pointer up
-					cable.head2[0] = data.x;
-					cable.head2[1] = data.y;
+					let mx = (data.x - cable.head2[0]) * container.scale;
+					let my = (data.y - cable.head2[1]) * container.scale;
+
+					cable.moveCableHead({
+						stopPropagation(){}, preventDefault(){},
+						target: cables.$el[0],
+						movementX: mx,
+						movementY: my
+					}, true);
 				}
 
 				else if(data.t === 'ccd'){ // cable created down
@@ -270,12 +280,12 @@ class RemoteSketch extends RemoteEngineClient {
 
 				else if(data.t === 'ccbd'){ // cable created branch down
 					this._skipEvent = true;
-					parentCable.createBranch();
+					cable.createBranch();
 					this._skipEvent = false;
 				}
 				else if(data.t === 'ccbu'){ // cable created branch up
-					cable.head2[0] = data.x;
-					cable.head2[1] = data.y;
+					newCable.head2[0] = data.x;
+					newCable.head2[1] = data.y;
 				}
 
 				else if(data.t === 'cd'){ // cable deleted
