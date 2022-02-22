@@ -22,6 +22,8 @@ function initContainer(instance) {
 		}
 		sf-m[name="remote-sketch"] .cursor {
 			transition: 0.1s ease-in-out transform;
+			will-change: transform;
+			backface-visibility: hidden;
 		}
 		sf-m[name="remote-sketch"] span {
 			vertical-align: bottom;
@@ -62,6 +64,22 @@ class RemoteSketch extends RemoteEngineClient {
 		}
 
 		let container = this.instance.scope('container');
+		function getSelectedIDs(){
+			let {cableScope, nodeScope} = container;
+			let cSelected = cableScope.selected;
+			let nSelected = nodeScope.selected;
+
+			let sc = [];
+			for (var i = 0; i < cSelected.length; i++)
+				sc.push(cableScope.list.indexOf(cSelected[i]));
+
+			let sn = [];
+			for (var i = 0; i < nSelected.length; i++)
+				sn.push(nodeScope.list.indexOf(nSelected[i]));
+
+			return {sc, sn};
+		}
+
 		let npu, cpu, selpu;
 		function pointerdown(ev){
 			if(that._skipEvent || !ev.isTrusted || ev.button !== 0) return;
@@ -77,7 +95,10 @@ class RemoteSketch extends RemoteEngineClient {
 				npu = true;
 				$window.once('pointerup', () => {
 					if(npu === false) return;
-					that._onSyncOut({uid, w:'skc', t:'npu', x:iface.x, y:iface.y, i});
+					let {sn, sc} = getSelectedIDs();
+					that._onSyncOut({uid, w:'skc', t:'npu', x:iface.x, y:iface.y, i,
+						sn, sc
+					});
 				}, {capture: true});
 			}
 			else if(cable != null){
@@ -93,10 +114,9 @@ class RemoteSketch extends RemoteEngineClient {
 				cpu = true;
 				$window.once('pointerup', () => {
 					if(cpu === false) return;
-					that._onSyncOut({uid, w:'skc', t:'cpu',
-					    x:cable.head2[0],
-					    y:cable.head2[1],
-						ci,
+					let {sn, sc} = getSelectedIDs();
+					that._onSyncOut({uid, w:'skc', t:'cpu', ci, sn, sc,
+					    x:cable.head2[0], y:cable.head2[1],
 					});
 				}, {capture: true});
 			}
@@ -205,6 +225,36 @@ class RemoteSketch extends RemoteEngineClient {
 		}
 	}
 
+	_applySelectedId(container, data){
+		let {sc, sn} = data;
+		if(sc.length === 0 && sn.length === 0) return;
+
+		let {cableScope, nodeScope} = container;
+		this._clearSelectedId(container);
+
+		for (var i = 0; i < sc.length; i++)
+			sc[i] = cableScope.list[sc[i]];
+
+		cableScope.selected.push(...sc);
+
+		for (var i = 0; i < sn.length; i++)
+			sn[i] = nodeScope.list[sn[i]];
+
+		nodeScope.selected.push(...sn);
+	}
+
+	_clearSelectedId(container){
+		let {cableScope, nodeScope} = container;
+		let cSelected = cableScope.selected;
+		let nSelected = nodeScope.selected;
+
+		if(cSelected.length !== 0)
+			cSelected.splice(0);
+
+		if(nSelected.length !== 0)
+			nSelected.splice(0);
+	}
+
 	onSyncIn(data){
 		data = super.onSyncIn(data);
 		if(data == null) return;
@@ -237,14 +287,19 @@ class RemoteSketch extends RemoteEngineClient {
 					// ToDo
 				}
 				else if(data.t === 'npu'){ // node pointer up
+					this._applySelectedId(container, data);
+
 					let mx = (data.x - iface.x) * devicePixelRatio * container.scale;
 					let my = (data.y - iface.y) * devicePixelRatio * container.scale;
 
 					iface.moveNode({
 						stopPropagation(){}, preventDefault(){},
+						target: iface.$el[0],
 						movementX: mx,
 						movementY: my
 					});
+
+					this._clearSelectedId(container);
 				}
 			}
 			else if(data.t.slice(0, 1) === 'c'){ // cable
@@ -266,10 +321,10 @@ class RemoteSketch extends RemoteEngineClient {
 					// ToDo
 				}
 				else if(data.t === 'cpu'){ // cable pointer up
+					this._applySelectedId(container, data);
+
 					let mx = (data.x - cable.head2[0]) * container.scale;
 					let my = (data.y - cable.head2[1]) * container.scale;
-
-					console.error('ahoy');
 
 					cable.moveCableHead({
 						stopPropagation(){}, preventDefault(){},
@@ -277,6 +332,8 @@ class RemoteSketch extends RemoteEngineClient {
 						movementX: mx,
 						movementY: my
 					}, true);
+
+					this._clearSelectedId(container);
 				}
 
 				else if(data.t === 'ccd'){ // cable created down
