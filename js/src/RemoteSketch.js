@@ -62,6 +62,7 @@ class RemoteSketch extends RemoteEngineClient {
 		}
 
 		let container = this.instance.scope('container');
+		let npu, cpu, selpu;
 		function pointerdown(ev){
 			if(that._skipEvent || !ev.isTrusted || ev.button !== 0) return;
 			let node = ev.target.closest('.nodes .node');
@@ -73,7 +74,9 @@ class RemoteSketch extends RemoteEngineClient {
 
 				that._onSyncOut({uid, w:'skc', t:'npd', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y, i});
 
+				npu = true;
 				$window.once('pointerup', () => {
+					if(npu === false) return;
 					that._onSyncOut({uid, w:'skc', t:'npu', x:iface.x, y:iface.y, i});
 				}, {capture: true});
 			}
@@ -87,7 +90,9 @@ class RemoteSketch extends RemoteEngineClient {
 					ci,
 				});
 
+				cpu = true;
 				$window.once('pointerup', () => {
+					if(cpu === false) return;
 					that._onSyncOut({uid, w:'skc', t:'cpu',
 					    x:cable.head2[0],
 					    y:cable.head2[1],
@@ -99,7 +104,9 @@ class RemoteSketch extends RemoteEngineClient {
 				if(container.select.show){ // selecting
 					that._onSyncOut({uid, w:'skc', t:'selpd', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
 
+					selpu = true;
 					$window.once('pointerup', () => {
+						if(selpu === false) return;
 						that._onSyncOut({uid, w:'skc', t:'selpu', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
 					}, {capture: true});
 				}
@@ -140,7 +147,8 @@ class RemoteSketch extends RemoteEngineClient {
 
 			that._onSyncOut({uid, w:'skc', t:'ccd', i, n: port.name, s: port.source});
 
-			$window.once('pointerup', () => {
+			cpu = false;
+			$window.once('pointerup', (event) => {
 				if(cable._evDisconnected) return;
 
 				let list = container.cableScope.list;
@@ -150,22 +158,29 @@ class RemoteSketch extends RemoteEngineClient {
 			}, {capture: true});
 		}
 
-		instance.on('cable.created.branch', cableCreatedBranch);
+		instance.on('cable.create.branch', cableCreatedBranch);
 		function cableCreatedBranch(ev){
 			if(that._skipEvent) return;
+			let { event, cable, type } = ev; // Don't destructure newCable
 			let list = container.cableScope.list;
-			let cable = ev.cable; // don't destructure newCable here
+			let ty = type === 'cablePath' ? 0 : 1;
 
-			let ci = list.indexOf(ev.cable);
-			that._onSyncOut({uid, w:'skc', t:'ccbd', ci});
+			let ci = list.indexOf(cable);
+			that._onSyncOut({uid, w:'skc', t:'ccbd', ci, ty,
+			    x:event.clientX - container.pos.x,
+			    y:event.clientY - container.pos.y,
+			});
 
-			$window.once('pointerup', () => {
+			cpu = false;
+			$window.once('pointerup', (event) => {
 				if(cable._evDisconnected) return;
 				let ci = list.indexOf(cable);
-				let newCable = ev.newCable;
-				let nci = list.indexOf(newCable);
+				let nci = list.indexOf(ev.newCable);
 
-				that._onSyncOut({uid, w:'skc', t:'ccbu', x:newCable.head2[0], y:newCable.head2[1], nci, ci});
+				that._onSyncOut({uid, w:'skc', t:'ccbu', ci, nci, ty,
+				    x:event.clientX - container.pos.x,
+				    y:event.clientY - container.pos.y,
+				});
 			}, {capture: true});
 		}
 
@@ -254,6 +269,8 @@ class RemoteSketch extends RemoteEngineClient {
 					let mx = (data.x - cable.head2[0]) * container.scale;
 					let my = (data.y - cable.head2[1]) * container.scale;
 
+					console.error('ahoy');
+
 					cable.moveCableHead({
 						stopPropagation(){}, preventDefault(){},
 						target: cables.$el[0],
@@ -278,14 +295,35 @@ class RemoteSketch extends RemoteEngineClient {
 					cable.head2[1] = data.y;
 				}
 
-				else if(data.t === 'ccbd'){ // cable created branch down
+				else if(data.t === 'ccbd'){ // cable create branch down
 					this._skipEvent = true;
-					cable.createBranch();
+					let fakeEv = {
+						stopPropagation(){},
+						target: container.cableScope.$el[0],
+						noMoveListen: true,
+						ctrlKey: true,
+						type: 'mouse',
+						pointerType: 'pointerdown',
+						clientX: data.x + container.pos.x,
+						clientY: data.y + container.pos.y,
+					};
+
+					if(data.ty === 0) // cablePath
+						cable.cablePathClicked(fakeEv);
+					else cable.createBranch(fakeEv);
+
 					this._skipEvent = false;
 				}
-				else if(data.t === 'ccbu'){ // cable created branch up
-					newCable.head2[0] = data.x;
-					newCable.head2[1] = data.y;
+				else if(data.t === 'ccbu'){ // cable create branch up
+					newCable.moveCableHead({
+						stopPropagation(){},
+						target: container.cableScope.$el[0],
+						noMoveListen: true,
+						type: 'mouse',
+						pointerType: 'pointerup',
+						clientX: data.x + container.pos.x,
+						clientY: data.y + container.pos.y,
+					});
 				}
 
 				else if(data.t === 'cd'){ // cable deleted
@@ -347,6 +385,8 @@ win.onclick = function(){
 	win.onclick = null;
 	win.ins = new win.Blackprint.RemoteSketch(win.SketchList[0]);
 	win.onmessage = function(msg){ win.ins.onSyncIn(msg.data) };
+	win.console.log = console.log;
+	win.console.error = console.error;
 	win.ins.onSyncOut = v => win.opener.postMessage(v);
 
 	let ins = new Blackprint.RemoteSketch(SketchList[0]);
