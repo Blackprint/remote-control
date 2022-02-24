@@ -43,6 +43,10 @@ class RemoteEngineServer {
 		// instance.on('port.output.value', cable => {});
 	}
 
+	// true  => allow
+	// false => block
+	async onImport(json){return false}
+
 	async onSyncIn(data){
 		data = JSON.parse(data);
 		let { ifaceList } = this.instance;
@@ -106,7 +110,10 @@ class RemoteEngineServer {
 			else if(data.t === 'ci'){ // clean import
 				this._skipEvent = true;
 				// this.instance.clearNodes();
-				await this.instance.importJSON(data.d);
+
+				if(await this.onImport() === true)
+					await this.instance.importJSON(data.d);
+
 				this._skipEvent = false;
 			}
 		}
@@ -179,6 +186,10 @@ class RemoteEngineClient {
 		});
 	}
 
+	syncModuleList(url){
+		this._onSyncOut({w:'ins', t:'sml', d: Object.keys(Blackprint.modulesURL)});
+	}
+
 	clearNodes(){
 		this._skipEvent = true;
 		this.instance.clearNodes();
@@ -187,12 +198,52 @@ class RemoteEngineClient {
 		this._onSyncOut({w:'ins', t:'c'})
 	}
 
-	async importJSON(data){
-		this._skipEvent = true;
-		await this.instance.importJSON(data);
-		this._skipEvent = false;
+	// true   => allow
+	// false  => block
+	async onImport(json){return false}
+	async onModule(urls){return false}
 
-		this._onSyncOut({w:'ins', t:'ci', d:data});
+	// To be replaced on blocked and any sync is now disabled
+	onDisabled(){}
+
+	async importRemoteJSON(){
+		this._onSyncOut({w:'ins', t:'ajs'});
+	}
+
+	async importJSON(data, noSync){
+		this._skipEvent = true;
+
+		if(await this.onImport(data) === true)
+			await this.instance.importJSON(data);
+		else {
+			// Disable remote on blocked instance's nodes/cable sync
+			this.onSyncIn = ()=>{};
+			this.onSyncOut = ()=>{};
+			this.onDisabled?.();
+			this._skipEvent = true;
+		}
+
+		if(noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
+		this._skipEvent = false;
+	}
+
+	async _syncModuleList(urls){
+		this._skipEvent = true;
+
+		if(await this.onModule(urls) === true){
+			// Import from editor
+			// Blackprint.modulesURL
+		}
+		else {
+			// Disable remote on blocked module sync
+			this.onSyncIn = ()=>{};
+			this.onSyncOut = ()=>{};
+			this.onDisabled?.();
+			this._skipEvent = true;
+		}
+
+		if(noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
+		this._skipEvent = false;
 	}
 
 	onSyncIn(data){
@@ -279,6 +330,14 @@ class RemoteEngineClient {
 			} finally {
 				this._skipEvent = false;
 			}
+		}
+		else if(data.w === 'ins'){ // instance
+			if(data.t === 'ci')
+				this.importJSON(data.d, true);
+			else if(data.t === 'sml') // sync module list
+				this._syncModuleList(data.d);
+			else if(data.t === 'ajs') // ask json
+				this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
 		}
 
 		if(data.w === 'err') console.error("RemoteError:", data.d);
