@@ -8,7 +8,7 @@ function initContainer(instance) {
 
 	// This must be template only, don't insert dynamic data with ${...}
 	spaceEl.querySelector('sf-m[name="container"]').insertAdjacentHTML('beforeEnd', `<sf-m name="remote-sketch">
-		<div class="cursor" sf-each="val in remotes" style="transform: translate({{ val.x }}px, {{ val.y }}px)">
+		<div class="cursor" sf-each="val in remotes" style="transform: translate3d({{ val.x }}px, {{ val.y }}px, 0px)">
 			<i class="fa fa-mouse-pointer"></i>
 			<span>{{ val.uid }}</span>
 		</div>
