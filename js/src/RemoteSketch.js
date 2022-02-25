@@ -1,7 +1,3 @@
-Blackprint.space.model('remote-sketch', function(My){
-	My.remotes = [];
-});
-
 function initContainer(instance) {
 	let spaceEl = instance.scope.domList[0];
 	let scope = instance.scope('remote-sketch');
@@ -36,10 +32,18 @@ function initContainer(instance) {
 	return scope;
 }
 
+let firstRemoteSketchInit = true;
 class RemoteSketch extends RemoteControl {
 	constructor(instance){
 		super(instance);
 		Blackprint.settings('_remoteSketch', true);
+
+		if(firstRemoteSketchInit){
+			firstRemoteSketchInit = false;
+			Blackprint.space.model('remote-sketch', function(My){
+				My.remotes = [];
+			});
+		}
 
 		this._scope = initContainer(instance);
 		instance._remote = this;
