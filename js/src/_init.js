@@ -1,8 +1,9 @@
 // ToDo:
-// - sync importJSON
-// - sync loaded module
+// - sync importJSON (onImport)
+// - sync loaded module (onModule)
+// - sync data (_node.sync)
 
-class RemoteEngineServer {
+class RemoteEngine {
 	constructor(instance){
 		this.instance = instance;
 		this._skipEvent = false;
@@ -10,7 +11,7 @@ class RemoteEngineServer {
 
 		Blackprint.settings('_remoteEngine', true);
 
-		instance.on('cable.disconnect', ({ cable }) =>{
+		instance.on('cable.disconnect', ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
 			this._onSyncOut({
 				w:'c',
@@ -141,8 +142,8 @@ class RemoteEngineServer {
 	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 }
 
-// For Blackprint.Sketch
-class RemoteEngineClient {
+// Will be extended by RemoteSketch
+class RemoteControl {
 	constructor(instance){
 		this.instance = instance;
 		this._skipEvent = false;
@@ -186,20 +187,13 @@ class RemoteEngineClient {
 			}
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c', nm: ev.iface.namespace});
 		});
-		instance.on('node.deleted', ev => {
+		instance.on('node.delete', ev => {
 			if(this._skipEvent) return;
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'d'})
 		});
 		instance.on('_node.sync', ev => {
 			if(this._skipEvent) return;
-
-			if(this.isSketch){
-				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s',
-					x: ev.iface.x,
-					y: ev.iface.y,
-				});
-			}
-			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
+			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
 		});
 	}
 
@@ -228,21 +222,24 @@ class RemoteEngineClient {
 	}
 
 	async sendSketchToRemote(){
-		// todo
+		this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
 	}
 
-	async importJSON(data, noSync){
+	async importJSON(data, noSync, force){
 		this._skipEvent = true;
 
-		if(await this.onImport(data) === true)
-			await this.instance.importJSON(data);
-		else {
-			// Disable remote on blocked instance's nodes/cable sync
-			this.onSyncIn = ()=>{};
-			this.onSyncOut = ()=>{};
-			this.onDisabled?.();
-			this._skipEvent = true;
+		if(!force){
+			if(await this.onImport(data) === true)
+				await this.instance.importJSON(data);
+			else {
+				// Disable remote on blocked instance's nodes/cable sync
+				this.onSyncIn = ()=>{};
+				this.onSyncOut = ()=>{};
+				this.onDisabled?.();
+				this._skipEvent = true;
+			}
 		}
+		else await this.instance.importJSON(data);
 
 		if(noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
 		this._skipEvent = false;
@@ -391,5 +388,5 @@ class RemoteEngineClient {
 	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 }
 
-Blackprint.RemoteEngineServer = RemoteEngineServer;
-Blackprint.RemoteEngineClient = RemoteEngineClient;
+Blackprint.RemoteEngine = RemoteEngine;
+Blackprint.RemoteControl = RemoteControl;

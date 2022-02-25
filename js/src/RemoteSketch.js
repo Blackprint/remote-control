@@ -36,12 +36,14 @@ function initContainer(instance) {
 	return scope;
 }
 
-class RemoteSketch extends RemoteEngineClient {
+class RemoteSketch extends RemoteControl {
 	constructor(instance){
 		super(instance);
 		Blackprint.settings('_remoteSketch', true);
 
 		this._scope = initContainer(instance);
+		instance._remote = this;
+
 		this.isSketch = true;
 		let { ifaceList } = instance;
 
