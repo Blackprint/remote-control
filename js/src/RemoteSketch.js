@@ -21,7 +21,7 @@ function initContainer(instance) {
 			position: absolute;
 		}
 		sf-m[name="remote-sketch"] .cursor {
-			transition: 0.1s ease-in-out transform;
+			transition: 0.1s ease-out transform;
 			will-change: transform;
 			backface-visibility: hidden;
 		}
@@ -55,7 +55,7 @@ class RemoteSketch extends RemoteEngineClient {
 
 			if(tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'){
 				let el = ev.target.closest('.nodes .node');
-				if(el.model == null) return;
+				if(el == null || el.model == null) return;
 
 				let s = getElementSelector(ev.target, el);
 				let i = ifaceList.indexOf(el.model);
@@ -214,6 +214,14 @@ class RemoteSketch extends RemoteEngineClient {
 			that._onSyncOut({uid, w:'skc', t:'cd', ci});
 		}
 
+		instance.on('node.id.changed', nodeIDChanged);
+		function nodeIDChanged({ iface, from, to }){
+			if(that._skipEvent) return;
+
+			let i = ifaceList.indexOf(iface);
+			that._onSyncOut({uid, w:'ins', t:'nidc', i, f:from, to:to});
+		}
+
 		this.destroy = function(){
 			$window
 				.off('keyup', keyup, {capture: true})
@@ -222,6 +230,7 @@ class RemoteSketch extends RemoteEngineClient {
 
 			instance.off('cable.created', cableCreated);
 			instance.off('cable.deleted', cableDeleted);
+			instance.off('node.id.changed', nodeIDChanged);
 		}
 	}
 

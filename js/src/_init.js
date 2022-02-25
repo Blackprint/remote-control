@@ -1,5 +1,6 @@
 // ToDo:
-// - sync Interface ID
+// - sync importJSON
+// - sync loaded module
 
 class RemoteEngineServer {
 	constructor(instance){
@@ -102,17 +103,33 @@ class RemoteEngineServer {
 			}
 		}
 		else if(data.w === 'ins'){ // instance
+			let instance = this.instance;
+
 			if(data.t === 'c'){ // clean nodes
 				this._skipEvent = true;
-				this.instance.clearNodes();
+				instance.clearNodes();
 				this._skipEvent = false;
 			}
 			else if(data.t === 'ci'){ // clean import
 				this._skipEvent = true;
-				// this.instance.clearNodes();
+				// instance.clearNodes();
 
 				if(await this.onImport() === true)
-					await this.instance.importJSON(data.d);
+					await instance.importJSON(data.d);
+
+				this._skipEvent = false;
+			}
+			else if(data.t === 'nidc'){ // node id changed
+				this._skipEvent = true;
+
+				let old = instance.iface[data.from];
+				if(old == null)
+					throw new Error("Node list was not synced");
+
+				// This may need to be changed if the ID was being used for reactivity
+				delete instance.iface[data.from];
+				instance.iface[data.to] = old;
+				old.id = data.to;
 
 				this._skipEvent = false;
 			}
@@ -208,6 +225,10 @@ class RemoteEngineClient {
 
 	async importRemoteJSON(){
 		this._onSyncOut({w:'ins', t:'ajs'});
+	}
+
+	async sendSketchToRemote(){
+		// todo
 	}
 
 	async importJSON(data, noSync){
@@ -338,6 +359,28 @@ class RemoteEngineClient {
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
 				this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
+			else if(data.t === 'nidc'){ // node id changed
+				this._skipEvent = true;
+				let iface = ifaceList[data.i];
+
+				try{
+					if(iface == null)
+						throw new Error("Node list was not synced");
+
+					if(iface.id !== data.from)
+						throw new Error("Old node id was different");
+
+					let instance = this.instance;
+
+					// This may need to be changed if the ID was being used for reactivity
+					delete instance.iface[iface.id];
+					instance.iface[data.to] = iface;
+					iface.id = data.to;
+				}
+				finally {
+					this._skipEvent = false;
+				}
+			}
 		}
 
 		if(data.w === 'err') console.error("RemoteError:", data.d);
