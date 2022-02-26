@@ -3,10 +3,71 @@
 // - sync loaded module (onModule)
 // - sync data (_node.sync)
 
-class RemoteEngine {
+class RemoteBase {
+	// true  => allow
+	// false => block
+	async onImport(json){return false}
+	async onModule(urls){return false}
+
+	// To be replaced on blocked and any sync is now disabled
+	onDisabled(){}
+
+	// "onSyncOut" function need to be replaced and the data need to be send to remote client
+	onSyncOut(data){}
+	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
+
 	constructor(instance){
 		this.instance = instance;
 		this._skipEvent = false;
+	}
+
+	async _syncModuleList(urls){
+		this._skipEvent = true;
+
+		if(await this.onModule(urls) === true){
+			// Import from editor
+			this._skipEvent = true;
+
+			let oldList = Object.keys(Blackprint.modulesURL);
+
+			for (var i = oldList.length - 1; i >= 0; i--) {
+				var url = oldList[i];
+				let index = urls.indexOf(url);
+
+				// Remove module
+				if(index === -1){
+					Blackprint.deleteModuleFromURL(url);
+					continue;
+				}
+
+				urls.splice(index, 1);
+			}
+
+			if(urls.length !== 0){
+				console.log(`Adding ${urls.length} new module triggered by remote sync`);
+				loadModuleURL(urls, {
+					loadBrowserInterface: Blackprint.Sketch != null
+				});
+			}
+
+			this._skipEvent = true;
+		}
+		else {
+			// Disable remote on blocked module sync
+			console.error("Loaded module sync was denied, the remote control will be disabled");
+			this.onSyncIn = ()=>{};
+			this.onSyncOut = ()=>{};
+			this.onDisabled?.();
+			this._skipEvent = true;
+		}
+
+		this._skipEvent = false;
+	}
+}
+
+class RemoteEngine extends RemoteBase {
+	constructor(instance){
+		super(instance);
 
 		let { ifaceList } = instance;
 		Blackprint.settings('_remoteEngine', true);
@@ -60,10 +121,6 @@ class RemoteEngine {
 			this.onSyncOut = ()=>{};
 		}
 	}
-
-	// true  => allow
-	// false => block
-	async onImport(json){return false}
 
 	async onSyncIn(data){
 		data = JSON.parse(data);
@@ -136,6 +193,8 @@ class RemoteEngine {
 
 				this._skipEvent = false;
 			}
+			else if(data.t === 'sml') // sync module list
+				this._syncModuleList(data.d);
 			else if(data.t === 'nidc'){ // node id changed
 				this._skipEvent = true;
 
@@ -152,17 +211,12 @@ class RemoteEngine {
 			}
 		}
 	}
-
-	// "onSyncOut" function need to be replaced and the data need to be send to remote client
-	onSyncOut(data){}
-	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 }
 
 // Will be extended by RemoteSketch
-class RemoteControl {
+class RemoteControl extends RemoteBase {
 	constructor(instance){
-		this.instance = instance;
-		this._skipEvent = false;
+		super(instance);
 		this.isSketch = false;
 		let { ifaceList } = instance;
 
@@ -239,8 +293,18 @@ class RemoteControl {
 		}
 	}
 
+	_sMLPending = false;
 	syncModuleList(){
-		this._onSyncOut({w:'ins', t:'sml', d: Object.keys(Blackprint.modulesURL)});
+		if(this._sMLPending) return;
+		this._sMLPending = true
+
+		// Avoid burst sync when delete/add new module less than 2 seconds
+		// And we need to wait until the module was deleted/added and get the latest list
+		setTimeout(()=>{
+		    this._sMLPending = false;
+
+			this._onSyncOut({w:'ins', t:'sml', d: Object.keys(Blackprint.modulesURL)});
+		}, 2000);
 	}
 
 	clearNodes(){
@@ -250,14 +314,6 @@ class RemoteControl {
 
 		this._onSyncOut({w:'ins', t:'c'})
 	}
-
-	// true   => allow
-	// false  => block
-	async onImport(json){return false}
-	async onModule(urls){return false}
-
-	// To be replaced on blocked and any sync is now disabled
-	onDisabled(){}
 
 	async importRemoteJSON(){
 		this._onSyncOut({w:'ins', t:'ajs'});
@@ -285,49 +341,6 @@ class RemoteControl {
 		else await this.instance.importJSON(data, options);
 
 		if(!noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
-		this._skipEvent = false;
-	}
-
-	async _syncModuleList(urls){
-		this._skipEvent = true;
-
-		if(await this.onModule(urls) === true){
-			// Import from editor
-			this._skipEvent = true;
-
-			let oldList = Object.keys(Blackprint.modulesURL);
-
-			for (var i = oldList.length - 1; i >= 0; i--) {
-				var url = oldList[i];
-				let index = urls.indexOf(url);
-
-				// Remove module
-				if(index === -1){
-					Blackprint.deleteModuleFromURL(url);
-					continue;
-				}
-
-				url.splice(index, 1);
-			}
-
-			if(urls.length !== 0){
-				console.log(`Adding ${urls.length} new module triggered by remote sync`);
-				loadModuleURL(urls, {
-					loadBrowserInterface: Blackprint.Sketch != null
-				});
-			}
-
-			this._skipEvent = true;
-		}
-		else {
-			// Disable remote on blocked module sync
-			console.error("Loaded module sync was denied, the remote control will be disabled");
-			this.onSyncIn = ()=>{};
-			this.onSyncOut = ()=>{};
-			this.onDisabled?.();
-			this._skipEvent = true;
-		}
-
 		this._skipEvent = false;
 	}
 
@@ -449,10 +462,6 @@ class RemoteControl {
 
 		if(data.w === 'err') console.error("RemoteError:", data.d);
 	}
-
-	// "onSyncOut" function need to be replaced and the data need to be send to remote client
-	onSyncOut(data){}
-	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 }
 
 Blackprint.RemoteEngine = RemoteEngine;
