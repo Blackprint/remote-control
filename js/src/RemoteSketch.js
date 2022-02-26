@@ -55,20 +55,6 @@ class RemoteSketch extends RemoteControl {
 		let $window = $(window);
 		let uid = Math.random()*10000 | 0; // ToDo: replace this on the relay server
 
-		function keyup(ev){
-			if(that._skipEvent || !ev.isTrusted) return;
-			let tagName = ev.target.tagName;
-
-			if(tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'){
-				let el = ev.target.closest('.nodes .node');
-				if(el == null || el.model == null) return;
-
-				let s = getElementSelector(ev.target, el);
-				let i = ifaceList.indexOf(el.model);
-				that._onSyncOut({uid, w:'skc', t:'kd', s, i, fd: ev.target.value});
-			}
-		}
-
 		let container = this.instance.scope('container');
 		function getSelectedIDs(){
 			let {cableScope, nodeScope} = container;
@@ -162,7 +148,6 @@ class RemoteSketch extends RemoteControl {
 		}
 
 		$window
-			.on('keyup', keyup, {capture: true})
 			.on('pointerdown', pointerdown, {capture: true})
 			.on('pointermove', pointermove, {capture: true});
 
@@ -230,7 +215,6 @@ class RemoteSketch extends RemoteControl {
 
 		this.destroy = function(){
 			$window
-				.off('keyup', keyup, {capture: true})
 				.off('pointerdown', pointerdown, {capture: true})
 				.off('pointermove', pointermove, {capture: true});
 
@@ -282,14 +266,6 @@ class RemoteSketch extends RemoteControl {
 		if(data.i != null){
 			iface = this.instance.ifaceList[data.i];
 			if(iface == null) throw new Error("Node list was not synced");
-		}
-
-		if(data.w === 'kd'){ // keydown
-			let el = elementChildIndexes(data.s, iface.$el[0].children[0]);
-
-			el.value = data.fd;
-			$(el).trigger('input');
-			return;
 		}
 
 		if(data.w === 'skc'){ // sketch event
