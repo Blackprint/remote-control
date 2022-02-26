@@ -188,8 +188,11 @@ class RemoteEngine extends RemoteBase {
 				this._skipEvent = true;
 				// instance.clearNodes();
 
-				if(await this.onImport() === true)
+				if(await this.onImport() === true){
+					this._skipEvent = true;
 					await instance.importJSON(data.d);
+					this._skipEvent = false;
+				}
 
 				this._skipEvent = false;
 			}
@@ -325,6 +328,7 @@ class RemoteControl extends RemoteBase {
 
 	async importJSON(data, options, noSync, force){
 		this._skipEvent = true;
+		if(!noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
 
 		if(!force){
 			if(await this.onImport(data) === true)
@@ -340,11 +344,10 @@ class RemoteControl extends RemoteBase {
 		}
 		else await this.instance.importJSON(data, options);
 
-		if(!noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
 		this._skipEvent = false;
 	}
 
-	onSyncIn(data){
+	async onSyncIn(data){
 		data = JSON.parse(data);
 		if(data.w === 'skc') return data;
 
@@ -430,8 +433,11 @@ class RemoteControl extends RemoteBase {
 			}
 		}
 		else if(data.w === 'ins'){ // instance
-			if(data.t === 'ci')
-				this.importJSON(data.d);
+			if(data.t === 'ci'){
+				this._skipEvent = true;
+				await this.instance.importJSON(data.d);
+				this._skipEvent = false;
+			}
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json

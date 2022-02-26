@@ -1,6 +1,5 @@
 function initContainer(instance) {
 	let spaceEl = instance.scope.domList[0];
-	let scope = instance.scope('remote-sketch');
 
 	// This must be template only, don't insert dynamic data with ${...}
 	spaceEl.querySelector('sf-m[name="container"]').insertAdjacentHTML('beforeEnd', `<sf-m name="remote-sketch">
@@ -29,26 +28,27 @@ function initContainer(instance) {
 			border-radius: 10px;
 		}
 	</style>`);
-	return scope;
+
+	return instance.scope('remote-sketch');
 }
 
-let firstRemoteSketchInit = true;
+if(globalThis.sf != null){
+	sf.$(function(){
+		Blackprint.space.model('remote-sketch', function(My){
+			My.remotes = [];
+		});
+	});
+}
+
 class RemoteSketch extends RemoteControl {
 	constructor(instance){
 		super(instance);
+		this.isSketch = true;
 		Blackprint.settings('_remoteSketch', true);
-
-		if(firstRemoteSketchInit){
-			firstRemoteSketchInit = false;
-			Blackprint.space.model('remote-sketch', function(My){
-				My.remotes = [];
-			});
-		}
 
 		this._scope = initContainer(instance);
 		instance._remote = this;
 
-		this.isSketch = true;
 		let { ifaceList } = instance;
 
 		let that = this;
@@ -274,8 +274,8 @@ class RemoteSketch extends RemoteControl {
 			nSelected.splice(0);
 	}
 
-	onSyncIn(data){
-		data = super.onSyncIn(data);
+	async onSyncIn(data){
+		data = await super.onSyncIn(data);
 		if(data == null) return;
 
 		let iface;
