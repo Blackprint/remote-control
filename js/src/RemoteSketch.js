@@ -234,9 +234,13 @@ class RemoteSketch extends RemoteControl {
 				.off('pointerdown', pointerdown, {capture: true})
 				.off('pointermove', pointermove, {capture: true});
 
+			instance.off('cable.create.branch', cableCreatedBranch);
 			instance.off('cable.created', cableCreated);
 			instance.off('cable.deleted', cableDeleted);
 			instance.off('node.id.changed', nodeIDChanged);
+
+			this.onSyncIn = ()=>{};
+			this.onSyncOut = ()=>{};
 		}
 	}
 

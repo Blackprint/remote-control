@@ -7,11 +7,12 @@ class RemoteEngine {
 	constructor(instance){
 		this.instance = instance;
 		this._skipEvent = false;
-		let { ifaceList } = instance;
 
+		let { ifaceList } = instance;
 		Blackprint.settings('_remoteEngine', true);
 
-		instance.on('cable.disconnect', ({ cable }) => {
+		let evCableDisconnect;
+		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
 			this._onSyncOut({
 				w:'c',
@@ -21,7 +22,8 @@ class RemoteEngine {
 			});
 		});
 
-		instance.on('_flowEvent',  cable => {
+		let evFlowEvent;
+		instance.on('_flowEvent', evFlowEvent = cable => {
 			if(this._skipEvent) return;
 			this._onSyncOut({
 				w:'c',
@@ -30,11 +32,15 @@ class RemoteEngine {
 				t:'f'
 			});
 		});
-		instance.on('_node.sync', ev => {
+
+		let evNodeSync;
+		instance.on('_node.sync', evNodeSync = ev => {
 			if(this._skipEvent) return;
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'})
 		});
-		instance.on('error', ev => {
+
+		let evError;
+		instance.on('error', evError = ev => {
 			if(this._skipEvent) return;
 			this._onSyncOut({w:'err', d: ev.data})
 		});
@@ -43,6 +49,16 @@ class RemoteEngine {
 		// instance.on('cable.cancel', cable => {});
 		// instance.on('port.output.call', cable => {});
 		// instance.on('port.output.value', cable => {});
+
+		this.destroy = () => {
+			instance.off('cable.disconnect', evCableDisconnect);
+			instance.off('_flowEvent', evFlowEvent);
+			instance.off('_node.sync', evNodeSync);
+			instance.off('error', evError);
+
+			this.onSyncIn = ()=>{};
+			this.onSyncOut = ()=>{};
+		}
 	}
 
 	// true  => allow
@@ -150,7 +166,8 @@ class RemoteControl {
 		this.isSketch = false;
 		let { ifaceList } = instance;
 
-		instance.on('cable.connect', ({ cable }) => {
+		let evCableConnect;
+		instance.on('cable.connect', evCableConnect = ({ cable }) => {
 			if(this._skipEvent) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 
@@ -162,7 +179,9 @@ class RemoteControl {
 				t:'c'
 			});
 		});
-		instance.on('cable.disconnect', ({ cable }) => {
+
+		let evCableDisconnect;
+		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 
@@ -175,7 +194,8 @@ class RemoteControl {
 			});
 		});
 
-		instance.on('node.created', ev => {
+		let evNodeCreated;
+		instance.on('node.created', evNodeCreated = ev => {
 			if(this._skipEvent) return;
 
 			if(this.isSketch){
@@ -187,17 +207,39 @@ class RemoteControl {
 			}
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c', nm: ev.iface.namespace});
 		});
-		instance.on('node.delete', ev => {
+
+		let evNodeDelete;
+		instance.on('node.delete', evNodeDelete = ev => {
 			if(this._skipEvent) return;
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'d'})
 		});
-		instance.on('_node.sync', ev => {
+
+		let evNodeSync;
+		instance.on('_node.sync', evNodeSync = ev => {
 			if(this._skipEvent) return;
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
 		});
+
+		let evModuleDelete;
+		Blackprint.on('moduleDelete', evModuleDelete = ev => {
+			if(this._skipEvent) return;
+			this.syncModuleList();
+		});
+
+		this.destroy = () => {
+			instance.off('cable.connect', evCableConnect);
+			instance.off('cable.disconnect', evCableDisconnect);
+			instance.off('node.created', evNodeCreated);
+			instance.off('node.delete', evNodeDelete);
+			instance.off('_node.sync', evNodeSync);
+			Blackprint.off('moduleDelete', evModuleDelete);
+
+			this.onSyncIn = ()=>{};
+			this.onSyncOut = ()=>{};
+		}
 	}
 
-	syncModuleList(url){
+	syncModuleList(){
 		this._onSyncOut({w:'ins', t:'sml', d: Object.keys(Blackprint.modulesURL)});
 	}
 
@@ -225,23 +267,24 @@ class RemoteControl {
 		this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
 	}
 
-	async importJSON(data, noSync, force){
+	async importJSON(data, options, noSync, force){
 		this._skipEvent = true;
 
 		if(!force){
 			if(await this.onImport(data) === true)
-				await this.instance.importJSON(data);
+				await this.instance.importJSON(data, options);
 			else {
 				// Disable remote on blocked instance's nodes/cable sync
+				console.error("Import was denied, the remote control will be disabled");
 				this.onSyncIn = ()=>{};
 				this.onSyncOut = ()=>{};
 				this.onDisabled?.();
 				this._skipEvent = true;
 			}
 		}
-		else await this.instance.importJSON(data);
+		else await this.instance.importJSON(data, options);
 
-		if(noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
+		if(!noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
 		this._skipEvent = false;
 	}
 
@@ -250,17 +293,41 @@ class RemoteControl {
 
 		if(await this.onModule(urls) === true){
 			// Import from editor
-			// Blackprint.modulesURL
+			this._skipEvent = true;
+
+			let oldList = Object.keys(Blackprint.modulesURL);
+
+			for (var i = oldList.length - 1; i >= 0; i--) {
+				var url = oldList[i];
+				let index = urls.indexOf(url);
+
+				// Remove module
+				if(index === -1){
+					Blackprint.deleteModuleFromURL(url);
+					continue;
+				}
+
+				url.splice(index, 1);
+			}
+
+			if(urls.length !== 0){
+				console.log(`Adding ${urls.length} new module triggered by remote sync`);
+				loadModuleURL(urls, {
+					loadBrowserInterface: Blackprint.Sketch != null
+				});
+			}
+
+			this._skipEvent = true;
 		}
 		else {
 			// Disable remote on blocked module sync
+			console.error("Loaded module sync was denied, the remote control will be disabled");
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
 			this.onDisabled?.();
 			this._skipEvent = true;
 		}
 
-		if(noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
 		this._skipEvent = false;
 	}
 
@@ -283,7 +350,7 @@ class RemoteControl {
 					let cable = this.instance.scope('cables').list[data.ci];
 
 					if(cable == null)
-						throw new Error("Cable list is not synced");
+						throw new Error("Cable list was not synced");
 
 					if(cable.source === 'input')
 						outputPort.connectCable(cable);
@@ -351,7 +418,7 @@ class RemoteControl {
 		}
 		else if(data.w === 'ins'){ // instance
 			if(data.t === 'ci')
-				this.importJSON(data.d, true);
+				this.importJSON(data.d);
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
