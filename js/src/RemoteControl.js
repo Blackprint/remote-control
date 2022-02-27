@@ -24,6 +24,7 @@ class RemoteControl extends RemoteBase {
 			if(cable._evDisconnected || this._skipEvent) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 
+			cable._evDisconnected = true;
 			this._onSyncOut({
 				w:'c',
 				ci,
@@ -177,12 +178,17 @@ class RemoteControl extends RemoteBase {
 
 			if(cable == null) return;
 
-			if(data.t === 'f') // data flow
+			if(data.t === 'f'){ // data flow
+				this._skipEvent = true;
 				cable.visualizeFlow();
+				this._skipEvent = false;
+			}
 
 			else if(data.t === 'd'){ // disconnect
+				this._skipEvent = true;
 				cable._evDisconnected = true;
 				cable.disconnect();
+				this._skipEvent = false;
 			}
 		}
 		else if(data.w === 'nd'){ // node

@@ -9,6 +9,8 @@ class RemoteEngine extends RemoteBase {
 		let evCableDisconnect;
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
+
+			cable._evDisconnected = true;
 			this._onSyncOut({
 				w:'c',
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
@@ -85,8 +87,10 @@ class RemoteEngine extends RemoteBase {
 			if(cable == null) return;
 
 			if(data.t === 'd'){ // disconnect
+				this._skipEvent = true;
 				cable._evDisconnected = true;
 				cable.disconnect();
+				this._skipEvent = false;
 			}
 		}
 		else if(data.w === 'nd'){ // node
@@ -100,7 +104,10 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'c'){ // created
 				if(iface != null) throw new Error("Node list was not synced");
+
+				this._skipEvent = true;
 				let newIface = this.instance.createNode(data.nm);
+				this._skipEvent = false;
 
 				if(ifaceList.indexOf(newIface) !== data.i)
 					throw new Error("Node list was not synced");
