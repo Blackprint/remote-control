@@ -97,13 +97,20 @@ class RemoteEngine extends RemoteBase {
 			let iface = ifaceList[data.i];
 
 			if(data.t === 's'){ // sync
-				if(iface != null)
+				if(iface == null)
 					throw new Error("Node list was not synced");
 
-				iface.node.syncIn?.(data.d);
+				let node = iface.node;
+				let temp = data.d;
+
+				node._syncronizing = true;
+				for(let key in temp)
+					node.syncIn(key, temp[key]);
+
+				node._syncronizing = false;
 			}
 			else if(data.t === 'c'){ // created
-				if(iface != null) throw new Error("Node list was not synced");
+				if(iface == null) throw new Error("Node list was not synced");
 
 				this._skipEvent = true;
 				let newIface = this.instance.createNode(data.nm);
