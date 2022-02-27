@@ -1,20 +1,18 @@
 // ToDo:
 // - sync data (_node.sync)
 
-class RemoteBase {
+class RemoteBase extends Blackprint.Engine.CustomEvent {
 	// true  => allow
 	// false => block
 	async onImport(json){return false}
 	async onModule(urls){return false}
-
-	// To be replaced on blocked and any sync is now disabled
-	onDisabled(){}
 
 	// "onSyncOut" function need to be replaced and the data need to be send to remote client
 	onSyncOut(data){}
 	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 
 	constructor(instance){
+		super();
 		this.instance = instance;
 		this._skipEvent = false;
 	}
@@ -27,6 +25,7 @@ class RemoteBase {
 			this._skipEvent = true;
 
 			let oldList = Object.keys(Blackprint.modulesURL);
+			let removed = [];
 
 			for (var i = oldList.length - 1; i >= 0; i--) {
 				var url = oldList[i];
@@ -35,14 +34,19 @@ class RemoteBase {
 				// Remove module
 				if(index === -1){
 					Blackprint.deleteModuleFromURL(url);
+					removed.push(url);
 					continue;
 				}
 
 				urls.splice(index, 1);
 			}
 
+			if(removed.length !== 0)
+				this.emit('module.remove', {list: removed});
+
 			if(urls.length !== 0){
 				console.log(`Adding ${urls.length} new module triggered by remote sync`);
+				this.emit('module.add', {list: urls});
 				Blackprint.loadModuleURL(urls, {
 					loadBrowserInterface: Blackprint.Sketch != null
 				});
@@ -55,7 +59,7 @@ class RemoteBase {
 			console.error("Loaded module sync was denied, the remote control will be disabled");
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
-			this.onDisabled?.();
+			this.emit('disabled');
 			this._skipEvent = true;
 		}
 
@@ -188,7 +192,9 @@ class RemoteEngine extends RemoteBase {
 
 				if(await this.onImport() === true){
 					this._skipEvent = true;
+					this.emit('sketch.import', {data: data.d});
 					await instance.importJSON(data.d);
+					this.emit('sketch.imported', {data: data.d});
 					this._skipEvent = false;
 				}
 
@@ -328,19 +334,22 @@ class RemoteControl extends RemoteBase {
 		this._skipEvent = true;
 		if(!noSync) this._onSyncOut({w:'ins', t:'ci', d:data});
 
+		this.emit('sketch.import', {data});
 		if(!force){
 			if(await this.onImport(data) === true)
 				await this.instance.importJSON(data, options);
 			else {
 				// Disable remote on blocked instance's nodes/cable sync
+				this.emit('sketch.import.cancel', {data});
 				console.error("Import was denied, the remote control will be disabled");
 				this.onSyncIn = ()=>{};
 				this.onSyncOut = ()=>{};
-				this.onDisabled?.();
+				this.emit('disabled');
 				this._skipEvent = true;
 			}
 		}
 		else await this.instance.importJSON(data, options);
+		this.emit('sketch.imported', {data});
 
 		this._skipEvent = false;
 	}

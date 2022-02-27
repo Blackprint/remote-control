@@ -52,7 +52,7 @@ class RemoteSketch extends RemoteControl {
 		let { ifaceList } = instance;
 
 		let that = this;
-		let $window = $(window);
+		let $window = $(sf.Window);
 		let uid = Math.random()*10000 | 0; // ToDo: replace this on the relay server
 
 		let container = this.instance.scope('container');
@@ -83,6 +83,8 @@ class RemoteSketch extends RemoteControl {
 
 			if(node != null){
 				let iface = node.model;
+				if(iface == null) return; // Skip sync for custom node
+
 				let i = ifaceList.indexOf(node.model);
 
 				that._onSyncOut({uid, w:'skc', t:'npd', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y, i});
