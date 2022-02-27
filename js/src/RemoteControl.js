@@ -164,8 +164,15 @@ class RemoteControl extends RemoteBase {
 				return;
 			}
 
-			let portInput = ifaceList[inp.i][inp.s][inp.n];
-			let portOutput = ifaceList[out.i][out.s][out.n];
+			let ifaceInput = ifaceList[inp.i];
+			let ifaceOutput = ifaceList[out.i];
+
+			// Maybe already deleted after deleting nodes
+			if(ifaceInput == null || ifaceOutput == null)
+				return;
+
+			let portInput = ifaceInput[inp.s][inp.n];
+			let portOutput = ifaceOutput[out.s][out.n];
 			let cables = portInput.cables;
 
 			let cable;
@@ -197,14 +204,21 @@ class RemoteControl extends RemoteBase {
 
 			try {
 				if(data.t === 's'){ // sync
-					if(iface != null)
+					if(iface == null)
 						throw new Error("Node list was not synced");
 
-					iface.node.syncIn?.(data.d);
+					let node = iface.node;
+					let temp = data.d;
+
+					node._syncronizing = true;
+					for(let key in temp)
+						node.syncIn(key, temp[key]);
+
+					node._syncronizing = false;
 				}
 
 				else if(data.t === 'c'){ // created
-					if(iface != null)
+					if(iface == null)
 						throw new Error("Node list was not synced");
 
 					let newIface = this.instance.createNode(data.nm, data);
