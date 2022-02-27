@@ -61,13 +61,16 @@ class RemoteSketch extends RemoteControl {
 			let cSelected = cableScope.selected;
 			let nSelected = nodeScope.selected;
 
+			// Don't use 'nodeScope' as the index may get changed on focus/click
+			let nodeList = container.$space.sketch.ifaceList;
+
 			let sc = [];
 			for (var i = 0; i < cSelected.length; i++)
 				sc.push(cableScope.list.indexOf(cSelected[i]));
 
 			let sn = [];
 			for (var i = 0; i < nSelected.length; i++)
-				sn.push(nodeScope.list.indexOf(nSelected[i]));
+				sn.push(nodeList.indexOf(nSelected[i]));
 
 			return {sc, sn};
 		}
@@ -196,7 +199,7 @@ class RemoteSketch extends RemoteControl {
 
 		instance.on('cable.deleted', cableDeleted);
 		function cableDeleted({ cable }){
-			if(that._skipEvent) return;
+			if(that._skipEvent || cable._evDisconnected) return;
 			let list = container.cableScope.list;
 			let ci = list.indexOf(cable);
 
@@ -228,54 +231,51 @@ class RemoteSketch extends RemoteControl {
 	}
 
 	_applySelectedId(container, data){
-		let {sc, sn} = data;
-		if(sc.length === 0 && sn.length === 0) return;
+		let {sn, sc} = data;
+		if(sn.length === 0 && sc.length === 0) return;
 
-		let {cableScope, nodeScope} = container;
-		this._clearSelectedId(container);
+		let {nodeScope, cableScope} = container;
+		let nodeL = nodeScope.selected;
+		let cableL = cableScope.selected;
+		let nodeList = container.$space.sketch.ifaceList;
+
+		// Don't use 'nodeScope' as the index may get changed on focus/click
+		for (var i = 0; i < sn.length; i++)
+			nodeL[i] = nodeList[sn[i]];
 
 		for (var i = 0; i < sc.length; i++)
-			sc[i] = cableScope.list[sc[i]];
-
-		cableScope.selected.push(...sc);
-
-		for (var i = 0; i < sn.length; i++)
-			sn[i] = nodeScope.list[sn[i]];
-
-		nodeScope.selected.push(...sn);
+			cableL[i] = cableScope.list[sc[i]];
 	}
 
-	_clearSelectedId(container){
-		let {cableScope, nodeScope} = container;
-		let cSelected = cableScope.selected;
-		let nSelected = nodeScope.selected;
-
-		if(cSelected.length !== 0)
-			cSelected.splice(0);
-
-		if(nSelected.length !== 0)
-			nSelected.splice(0);
+	_clearSelected(container){
+		let {nodeScope, cableScope} = container;
+		nodeScope.selected.length = 0;
+		cableScope.selected.length = 0;
 	}
 
 	_temporarySelection(container, reapply){
+		let {nodeScope, cableScope} = container;
+
 		// Let's use method below to avoid triggering SF's RepeatedElement feature
 		if(!reapply){
-			let tempA = container.nodeScope.selected.slice(0);
-			let tempB = container.cableScope.selected.slice(0);
+			let tempA = nodeScope.selected.slice(0);
+			let tempB = cableScope.selected.slice(0);
 
-			container.nodeScope.selected.length = 0;
-			container.cableScope.selected.length = 0;
+			nodeScope.selected.length = 0;
+			cableScope.selected.length = 0;
 
 			return {tempA, tempB};
 		}
 
 		let {tempA, tempB} = reapply;
+		let nodeL = nodeScope.selected;
+		let cableL = cableScope.selected;
 
 		for (var i = 0; i < tempA.length; i++)
-			container.nodeScope.selected[i] = tempA[i];
+			nodeL[i] = tempA[i];
 
 		for (var i = 0; i < tempB.length; i++)
-			container.cableScope.selected[i] = tempB[i];
+			cableL[i] = tempB[i];
 	}
 
 	async onSyncIn(data){
@@ -315,7 +315,7 @@ class RemoteSketch extends RemoteControl {
 						movementY: my
 					});
 
-					this._clearSelectedId(container);
+					this._clearSelected(container);
 					this._temporarySelection(container, temp);
 				}
 			}
@@ -344,14 +344,17 @@ class RemoteSketch extends RemoteControl {
 					let mx = (data.x - cable.head2[0]) * container.scale;
 					let my = (data.y - cable.head2[1]) * container.scale;
 
-					cable.moveCableHead({
+					let evTemp = {
 						stopPropagation(){}, preventDefault(){},
 						target: cables.$el[0],
 						movementX: mx,
 						movementY: my
-					}, true);
+					};
 
-					this._clearSelectedId(container);
+					cable.moveCableHead(evTemp, true);
+					container.moveSelection(evTemp, cable);
+
+					this._clearSelected(container);
 					this._temporarySelection(container, temp);
 				}
 
