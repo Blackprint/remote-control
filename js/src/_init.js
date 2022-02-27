@@ -43,7 +43,7 @@ class RemoteBase {
 
 			if(urls.length !== 0){
 				console.log(`Adding ${urls.length} new module triggered by remote sync`);
-				loadModuleURL(urls, {
+				Blackprint.loadModuleURL(urls, {
 					loadBrowserInterface: Blackprint.Sketch != null
 				});
 			}
