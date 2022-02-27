@@ -1,6 +1,4 @@
 // ToDo:
-// - sync importJSON (onImport)
-// - sync loaded module (onModule)
 // - sync data (_node.sync)
 
 class RemoteBase {

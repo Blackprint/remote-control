@@ -16,7 +16,7 @@ function initContainer(instance) {
 			position: absolute;
 		}
 		sf-m[name="remote-sketch"] .cursor {
-			transition: 0.1s ease-out transform;
+			transition: 0.15s ease-out transform;
 			will-change: transform;
 			backface-visibility: hidden;
 		}
@@ -114,6 +114,7 @@ class RemoteSketch extends RemoteControl {
 			}
 			else {
 				if(container.select.show){ // selecting
+					return; // Disable sync for now
 					that._onSyncOut({uid, w:'skc', t:'selpd', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
 
 					selpu = true;
@@ -125,25 +126,23 @@ class RemoteSketch extends RemoteControl {
 			}
 		}
 
-		let lastTimestamp = 0;
-		let lastMoveEv;
+		let lastMoveEv, delayMoveEvent;
 		function pointermove(ev){
 			if(!ev.isTrusted) return;
-			if(that._skipEvent || (ev.timeStamp-lastTimestamp) < 100){
+			if(delayMoveEvent){
 				lastMoveEv = ev;
-
-				setTimeout(()=> {
-					if(lastMoveEv == null) return;
-
-					lastTimestamp = ev.timeStamp;
-					pointermove(lastMoveEv);
-				}, 100);
 				return;
 			}
 
-			lastMoveEv = null;
+			delayMoveEvent = true;
+			setTimeout(()=> {
+				delayMoveEvent = false;
+				if(lastMoveEv == null) return;
 
-			lastTimestamp = ev.timeStamp;
+				pointermove(lastMoveEv);
+			}, 70);
+
+			lastMoveEv = null;
 			that._onSyncOut({uid, w:'skc', t:'pm', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
 		}
 
@@ -258,6 +257,27 @@ class RemoteSketch extends RemoteControl {
 			nSelected.splice(0);
 	}
 
+	_temporarySelection(container, reapply){
+		// Let's use method below to avoid triggering SF's RepeatedElement feature
+		if(!reapply){
+			let tempA = container.nodeScope.selected.slice(0);
+			let tempB = container.cableScope.selected.slice(0);
+
+			container.nodeScope.selected.length = 0;
+			container.cableScope.selected.length = 0;
+
+			return {tempA, tempB};
+		}
+
+		let {tempA, tempB} = reapply;
+
+		for (var i = 0; i < tempA.length; i++)
+			container.nodeScope.selected[i] = tempA[i];
+
+		for (var i = 0; i < tempB.length; i++)
+			container.cableScope.selected[i] = tempB[i];
+	}
+
 	async onSyncIn(data){
 		data = await super.onSyncIn(data);
 		if(data == null) return;
@@ -282,6 +302,7 @@ class RemoteSketch extends RemoteControl {
 					// ToDo
 				}
 				else if(data.t === 'npu'){ // node pointer up
+					let temp = this._temporarySelection(container, false);
 					this._applySelectedId(container, data);
 
 					let mx = (data.x - iface.x) * devicePixelRatio * container.scale;
@@ -295,6 +316,7 @@ class RemoteSketch extends RemoteControl {
 					});
 
 					this._clearSelectedId(container);
+					this._temporarySelection(container, temp);
 				}
 			}
 			else if(data.t.slice(0, 1) === 'c'){ // cable
@@ -316,6 +338,7 @@ class RemoteSketch extends RemoteControl {
 					// ToDo
 				}
 				else if(data.t === 'cpu'){ // cable pointer up
+					let temp = this._temporarySelection(container, false);
 					this._applySelectedId(container, data);
 
 					let mx = (data.x - cable.head2[0]) * container.scale;
@@ -329,6 +352,7 @@ class RemoteSketch extends RemoteControl {
 					}, true);
 
 					this._clearSelectedId(container);
+					this._temporarySelection(container, temp);
 				}
 
 				else if(data.t === 'ccd'){ // cable created down
