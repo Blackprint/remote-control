@@ -47,8 +47,6 @@ class RemoteSketch extends RemoteControl {
 		Blackprint.settings('_remoteSketch', true);
 
 		this._scope = initContainer(instance);
-		instance._remote = this;
-
 		let { ifaceList } = instance;
 
 		let that = this;

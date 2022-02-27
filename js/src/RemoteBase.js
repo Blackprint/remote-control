@@ -1,6 +1,3 @@
-// ToDo:
-// - sync data (_node.sync)
-
 class RemoteBase extends Blackprint.Engine.CustomEvent {
 	// true  => allow
 	// false => block
@@ -15,6 +12,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		super();
 		this.instance = instance;
 		this._skipEvent = false;
+		instance._remote = this;
 	}
 
 	async _syncModuleList(urls){
