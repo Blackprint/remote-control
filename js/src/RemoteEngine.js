@@ -98,7 +98,8 @@ class RemoteEngine extends RemoteBase {
 
 			if(data.t === 's'){ // sync
 				if(iface == null)
-					throw new Error("Node list was not synced");
+					return; // Maybe when creating nodes it's trying to syncing data
+					// throw new Error("Node list was not synced");
 
 				let node = iface.node;
 				let temp = data.d;
@@ -110,7 +111,8 @@ class RemoteEngine extends RemoteBase {
 				node._syncronizing = false;
 			}
 			else if(data.t === 'c'){ // created
-				if(iface == null) throw new Error("Node list was not synced");
+				if(iface != null) // The index mustn't be occupied by other iface
+					throw new Error("Node list was not synced");
 
 				this._skipEvent = true;
 				let newIface = this.instance.createNode(data.nm);
@@ -150,17 +152,25 @@ class RemoteEngine extends RemoteBase {
 				this._syncModuleList(data.d);
 			else if(data.t === 'nidc'){ // node id changed
 				this._skipEvent = true;
+				let iface = ifaceList[data.i];
 
-				let old = instance.iface[data.from];
-				if(old == null)
-					throw new Error("Node list was not synced");
+				try{
+					if(iface == null)
+						throw new Error("Node list was not synced");
 
-				// This may need to be changed if the ID was being used for reactivity
-				delete instance.iface[data.from];
-				instance.iface[data.to] = old;
-				old.id = data.to;
+					if(iface.id !== data.f)
+						throw new Error("Old node id was different");
 
-				this._skipEvent = false;
+					let instance = this.instance;
+
+					// This may need to be changed if the ID was being used for reactivity
+					delete instance.iface[iface.id];
+					instance.iface[data.to] = iface;
+					iface.id = data.to;
+				}
+				finally {
+					this._skipEvent = false;
+				}
 			}
 		}
 	}
