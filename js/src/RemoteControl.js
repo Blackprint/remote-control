@@ -3,6 +3,8 @@ class RemoteControl extends RemoteBase {
 	constructor(instance){
 		super(instance);
 		this.isSketch = false;
+
+		Blackprint.settings('_remoteSketch', true);
 		let { ifaceList } = instance;
 
 		let evCableConnect;
@@ -66,12 +68,22 @@ class RemoteControl extends RemoteBase {
 			this.syncModuleList();
 		});
 
+		let nodeIDChanged;
+		instance.on('node.id.changed', nodeIDChanged = ({ iface, from, to }) => {
+			if(this._skipEvent) return;
+
+			let i = ifaceList.indexOf(iface);
+			this._onSyncOut({w:'ins', t:'nidc', i, f:from, to:to});
+		});
+
+
 		this.destroy = () => {
 			instance.off('cable.connect', evCableConnect);
 			instance.off('cable.disconnect', evCableDisconnect);
 			instance.off('node.created', evNodeCreated);
 			instance.off('node.delete', evNodeDelete);
 			instance.off('_node.sync', evNodeSync);
+			instance.off('node.id.changed', nodeIDChanged);
 			Blackprint.off('moduleDelete', evModuleDelete);
 
 			this.onSyncIn = ()=>{};
@@ -164,15 +176,8 @@ class RemoteControl extends RemoteBase {
 				return;
 			}
 
-			let ifaceInput = ifaceList[inp.i];
-			let ifaceOutput = ifaceList[out.i];
-
-			// Maybe already deleted after deleting nodes
-			if(ifaceInput == null || ifaceOutput == null)
-				return;
-
-			let portInput = ifaceInput[inp.s][inp.n];
-			let portOutput = ifaceOutput[out.s][out.n];
+			let portInput = ifaceList[inp.i][inp.s][inp.n];
+			let portOutput = ifaceList[out.i][out.s][out.n];
 			let cables = portInput.cables;
 
 			let cable;
@@ -205,7 +210,8 @@ class RemoteControl extends RemoteBase {
 			try {
 				if(data.t === 's'){ // sync
 					if(iface == null)
-						throw new Error("Node list was not synced");
+						return; // Maybe when creating nodes it's trying to syncing data
+						// throw new Error("Node list was not synced");
 
 					let node = iface.node;
 					let temp = data.d;
@@ -218,7 +224,7 @@ class RemoteControl extends RemoteBase {
 				}
 
 				else if(data.t === 'c'){ // created
-					if(iface == null)
+					if(iface != null) // The index mustn't be occupied by other iface
 						throw new Error("Node list was not synced");
 
 					let newIface = this.instance.createNode(data.nm, data);

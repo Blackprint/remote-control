@@ -44,7 +44,6 @@ class RemoteSketch extends RemoteControl {
 	constructor(instance){
 		super(instance);
 		this.isSketch = true;
-		Blackprint.settings('_remoteSketch', true);
 
 		this._scope = initContainer(instance);
 		let { ifaceList } = instance;
@@ -153,8 +152,8 @@ class RemoteSketch extends RemoteControl {
 			.on('pointerdown', pointerdown, {capture: true})
 			.on('pointermove', pointermove, {capture: true});
 
-		instance.on('cable.created', cableCreated);
-		function cableCreated({ port, cable }){
+		let cableCreated;
+		instance.on('cable.created', cableCreated = ({ port, cable }) => {
 			if(that._skipEvent) return;
 			let i = ifaceList.indexOf(port.iface);
 
@@ -169,10 +168,10 @@ class RemoteSketch extends RemoteControl {
 
 				that._onSyncOut({uid, w:'skc', t:'ccu', x:cable.head2[0], y:cable.head2[1], ci});
 			}, {capture: true});
-		}
+		});
 
-		instance.on('cable.create.branch', cableCreatedBranch);
-		function cableCreatedBranch(ev){
+		let cableCreatedBranch;
+		instance.on('cable.create.branch', cableCreatedBranch = ev => {
 			if(that._skipEvent) return;
 			let { event, cable, type } = ev; // Don't destructure newCable
 			let list = container.cableScope.list;
@@ -195,26 +194,19 @@ class RemoteSketch extends RemoteControl {
 				    y:event.clientY - container.pos.y,
 				});
 			}, {capture: true});
-		}
+		});
 
-		instance.on('cable.deleted', cableDeleted);
-		function cableDeleted({ cable }){
+		let cableDeleted;
+		instance.on('cable.deleted', cableDeleted = ({ cable }) => {
 			if(that._skipEvent || cable._evDisconnected) return;
 			let list = container.cableScope.list;
 			let ci = list.indexOf(cable);
 
 			cable._evDisconnected = true;
 			that._onSyncOut({uid, w:'skc', t:'cd', ci});
-		}
+		});
 
-		instance.on('node.id.changed', nodeIDChanged);
-		function nodeIDChanged({ iface, from, to }){
-			if(that._skipEvent) return;
-
-			let i = ifaceList.indexOf(iface);
-			that._onSyncOut({uid, w:'ins', t:'nidc', i, f:from, to:to});
-		}
-
+		let destroyTemp = this.destroy;
 		this.destroy = function(){
 			$window
 				.off('pointerdown', pointerdown, {capture: true})
@@ -223,10 +215,10 @@ class RemoteSketch extends RemoteControl {
 			instance.off('cable.create.branch', cableCreatedBranch);
 			instance.off('cable.created', cableCreated);
 			instance.off('cable.deleted', cableDeleted);
-			instance.off('node.id.changed', nodeIDChanged);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
+			destroyTemp();
 		}
 	}
 
