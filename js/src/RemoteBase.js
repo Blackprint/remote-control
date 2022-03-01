@@ -45,7 +45,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 			if(urls.length !== 0){
 				console.log(`Adding ${urls.length} new module triggered by remote sync`);
 				this.emit('module.add', {list: urls});
-				Blackprint.loadModuleURL(urls, {
+				Blackprint.loadModuleFromURL(urls, {
 					loadBrowserInterface: Blackprint.Sketch != null
 				});
 			}

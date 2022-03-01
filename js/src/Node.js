@@ -1,5 +1,5 @@
 Blackprint.Node.prototype.syncOut = function(id, data){
-	if(this._instance._remote == null || this._syncronizing || this._instance.syncData === false)
+	if(this._instance._remote == null || this._syncronizing || this._instance.syncDataOut === false)
 		return;
 
 	if(this.syncThrottle !== 0){
