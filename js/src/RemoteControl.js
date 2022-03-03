@@ -101,7 +101,7 @@ class RemoteControl extends RemoteBase {
 		setTimeout(()=>{
 		    this._sMLPending = false;
 
-			this._onSyncOut({w:'ins', t:'sml', d: Object.keys(Blackprint.modulesURL)});
+			this._onSyncOut({w:'ins', t:'sml', d: Blackprint._modulesURL.map(v=> v._url)});
 		}, 2000);
 	}
 

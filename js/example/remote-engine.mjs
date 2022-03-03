@@ -21,10 +21,26 @@ Blackprint.allowModuleOrigin('*'); // Allow load from any URL (localhost/https o
 
 let instance = new Blackprint.Engine();
 let remote = new Blackprint.RemoteEngine(instance);
+remote.on('module.add', ({ list }) => {
+	console.log(`Adding ${list.length} new module, triggered by remote sync`);
+});
+remote.on('module.added', ({ list, failed }) =>{
+	console.log(`${list.length} new module has been added`)
 
-// Allow import/module sync
-remote.onImport = v=> true;
-remote.onModule = v=> true;
+	if(failed.length !== 0)
+		console.log(`Failed to add ${failed.length} new module`)
+});
+remote.on('module.remove', ({ list }) => {
+	console.log(`${list.length} module has been removed, triggered by remote sync`);
+});
+remote.on('disabled', ()=> console.log('Due to some reason, remote control was disabled'));
+
+// Allow import/module sync (return true = allow, false = disable sync)
+remote.onImport = v=> console.log("Remote import is allowed") || true;
+remote.onModule = v=> console.log("Remote module is allowed") || true;
+
+// This need to be replaced if you want to use this to solve conflicting nodes
+Blackprint.onModuleConflict = async (namespace, old, now) => {};
 
 io.on('connection', client => {
 	client.on('relay', data => remote.onSyncIn(data));

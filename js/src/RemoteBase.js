@@ -22,7 +22,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 			// Import from editor
 			this._skipEvent = true;
 
-			let oldList = Object.keys(Blackprint.modulesURL);
+			let oldList = Blackprint._modulesURL.map(v => v._url);
 			let removed = [];
 
 			for (var i = oldList.length - 1; i >= 0; i--) {
@@ -36,6 +36,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					continue;
 				}
 
+				// From from add list if already exist
 				urls.splice(index, 1);
 			}
 
@@ -43,11 +44,22 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 				this.emit('module.remove', {list: removed});
 
 			if(urls.length !== 0){
-				console.log(`Adding ${urls.length} new module triggered by remote sync`);
 				this.emit('module.add', {list: urls});
-				Blackprint.loadModuleFromURL(urls, {
+				await Blackprint.loadModuleFromURL(urls, {
 					loadBrowserInterface: Blackprint.Sketch != null
 				});
+
+				// Check if the list has been updated, and find any module that was not added
+				let oldList = Blackprint._modulesURL.map(v => v._url);
+				let failed = [];
+				for (var i = urls.length - 1; i >= 0; i--) {
+					if(oldList.includes(urls[i]) === false){
+						failed.push(urls[i]);
+						urls.splice(i, 1);
+					}
+				}
+
+				this.emit('module.added', {list: urls, failed});
 			}
 
 			this._skipEvent = true;
