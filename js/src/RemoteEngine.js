@@ -131,12 +131,17 @@ class RemoteEngine extends RemoteBase {
 
 			if(data.t === 'c'){ // clean nodes
 				this._skipEvent = true;
+				this.jsonTemp = null;
+				this.jsonSyncTime = 0;
 				instance.clearNodes();
 				this._skipEvent = false;
 			}
 			else if(data.t === 'ci'){ // clean import
 				this._skipEvent = true;
 				// instance.clearNodes();
+
+				this.jsonTemp = data.d;
+				this.jsonSyncTime = Date.now();
 
 				if(await this.onImport() === true){
 					this._skipEvent = true;
@@ -148,8 +153,14 @@ class RemoteEngine extends RemoteBase {
 
 				this._skipEvent = false;
 			}
+			else if(data.t === 'ssk'){ // save sketch json
+				this.jsonTemp = data.d;
+				this.jsonSyncTime = Date.now();
+			}
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
+			else if(data.t === 'ajs') // ask json
+				this._onSyncOut({w:'ins', t:'ci', d: instance.jsonTemp});
 			else if(data.t === 'nidc'){ // node id changed
 				this._skipEvent = true;
 				let iface = ifaceList[data.i];

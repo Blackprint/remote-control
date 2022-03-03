@@ -12,6 +12,7 @@ class RemoteControl extends RemoteBase {
 			if(this._skipEvent) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 
+			this.saveSketchToRemote();
 			this._onSyncOut({
 				w:'c',
 				ci,
@@ -27,6 +28,7 @@ class RemoteControl extends RemoteBase {
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 
 			cable._evDisconnected = true;
+			this.saveSketchToRemote();
 			this._onSyncOut({
 				w:'c',
 				ci,
@@ -39,6 +41,7 @@ class RemoteControl extends RemoteBase {
 		let evNodeCreated;
 		instance.on('node.created', evNodeCreated = ev => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 
 			if(this.isSketch){
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
@@ -53,12 +56,14 @@ class RemoteControl extends RemoteBase {
 		let evNodeDelete;
 		instance.on('node.delete', evNodeDelete = ev => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'d'})
 		});
 
 		let evNodeSync;
 		instance.on('_node.sync', evNodeSync = ev => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
 		});
 
@@ -71,6 +76,7 @@ class RemoteControl extends RemoteBase {
 		let nodeIDChanged;
 		instance.on('node.id.changed', nodeIDChanged = ({ iface, from, to }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 
 			let i = ifaceList.indexOf(iface);
 			this._onSyncOut({w:'ins', t:'nidc', i, f:from, to:to});
@@ -91,34 +97,20 @@ class RemoteControl extends RemoteBase {
 		}
 	}
 
-	_sMLPending = false;
-	syncModuleList(){
-		if(this._sMLPending) return;
-		this._sMLPending = true
-
-		// Avoid burst sync when delete/add new module less than 2 seconds
-		// And we need to wait until the module was deleted/added and get the latest list
-		setTimeout(()=>{
-		    this._sMLPending = false;
-
-			this._onSyncOut({w:'ins', t:'sml', d: Blackprint._modulesURL.map(v=> v._url)});
-		}, 2000);
-	}
-
-	clearNodes(){
-		this._skipEvent = true;
-		this.instance.clearNodes();
-		this._skipEvent = false;
-
-		this._onSyncOut({w:'ins', t:'c'})
-	}
-
-	async importRemoteJSON(){
-		this._onSyncOut({w:'ins', t:'ajs'});
-	}
-
 	async sendSketchToRemote(){
 		this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
+	}
+
+	_saveSketchToRemote;
+	saveWhenIdle = 60e3;
+	async saveSketchToRemote(instant){
+		clearTimeout(this._saveSketchToRemote);
+
+		this.emit('remote-save.reset.time');
+		this._saveSketchToRemote = setTimeout(()=> {
+			this.emit('remote-save.begin');
+			this._onSyncOut({w:'ins', t:'ssk', d: this.instance.exportJSON()});
+		}, this.saveWhenIdle);
 	}
 
 	async importJSON(data, options, noSync, force){
@@ -246,7 +238,12 @@ class RemoteControl extends RemoteBase {
 		else if(data.w === 'ins'){ // instance
 			if(data.t === 'ci'){
 				this._skipEvent = true;
-				await this.instance.importJSON(data.d);
+
+				if(data.d != null)
+					await this.instance.importJSON(data.d);
+				else
+					this.emit('empty.json.import');
+
 				this._skipEvent = false;
 			}
 			else if(data.t === 'sml') // sync module list
