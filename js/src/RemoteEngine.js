@@ -163,7 +163,7 @@ class RemoteEngine extends RemoteBase {
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
-				this._onSyncOut({w:'ins', t:'ci', d: instance.jsonTemp});
+				this._onSyncOut({w:'ins', t:'ci', d: this.jsonTemp});
 			else if(data.t === 'nidc'){ // node id changed
 				this._skipEvent = true;
 				let iface = ifaceList[data.i];
