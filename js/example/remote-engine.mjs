@@ -42,12 +42,17 @@ remote.onModule = v=> console.log("Remote module is allowed") || true;
 // This need to be replaced if you want to use this to solve conflicting nodes
 Blackprint.onModuleConflict = async (namespace, old, now) => {};
 
+let engineStartup = Date.now();
 io.on('connection', client => {
 	client.on('relay', data => remote.onSyncIn(data));
 	remote.onSyncOut = data => client.emit('relay', data);
 
 	console.log('Remote control: connected');
 	client.on('disconnect', () => console.log('Remote control: disconnected'));
+
+	setTimeout(() => {
+		client.emit('startup-time', engineStartup);
+	}, 1000);
 });
 
 console.log(`Waiting connection on port: ${port}`);
