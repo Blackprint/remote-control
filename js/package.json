@@ -11,5 +11,10 @@
   "bugs": {
     "url": "https://github.com/Blackprint/remote-control/issues"
   },
-  "main": "dist/remote-control.min.js"
+  "main": "dist/remote-control.min.js",
+  "devDependencies": {
+    "arweave": "^1.10.23",
+    "node-fetch": "^3.2.0",
+    "socket.io": "^4.4.1"
+  }
 }
