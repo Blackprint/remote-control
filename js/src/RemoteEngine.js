@@ -5,6 +5,7 @@ class RemoteEngine extends RemoteBase {
 
 		let { ifaceList } = instance;
 		Blackprint.settings('_remoteEngine', true);
+		Blackprint.settings('visualizeFlow', true);
 
 		let evCableDisconnect;
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
@@ -21,7 +22,7 @@ class RemoteEngine extends RemoteBase {
 
 		let evFlowEvent;
 		instance.on('_flowEvent', evFlowEvent = cable => {
-			if(this._skipEvent) return;
+			if(this._skipEvent && !this._isImporting) return;
 			this._onSyncOut({
 				w:'c',
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
@@ -32,7 +33,7 @@ class RemoteEngine extends RemoteBase {
 
 		let evNodeSync;
 		instance.on('_node.sync', evNodeSync = ev => {
-			if(this._skipEvent) return;
+			if(this._skipEvent && !this._isImporting) return;
 			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'})
 		});
 
@@ -144,11 +145,13 @@ class RemoteEngine extends RemoteBase {
 				this.jsonSyncTime = Date.now();
 
 				if(await this.onImport() === true){
+					this._isImporting = true;
 					this._skipEvent = true;
 					this.emit('sketch.import', {data: data.d});
 					await instance.importJSON(data.d);
 					this.emit('sketch.imported', {data: data.d});
 					this._skipEvent = false;
+					this._isImporting = false;
 				}
 
 				this._skipEvent = false;
