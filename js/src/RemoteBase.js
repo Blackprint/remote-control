@@ -15,6 +15,24 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		instance._remote = this;
 	}
 
+	async importRemoteJSON(){
+		this._onSyncOut({w:'ins', t:'ajs'});
+	}
+
+	_sMLPending = false;
+	syncModuleList(){
+		if(this._sMLPending) return;
+		this._sMLPending = true
+
+		// Avoid burst sync when delete/add new module less than 2 seconds
+		// And we need to wait until the module was deleted/added and get the latest list
+		setTimeout(()=>{
+		    this._sMLPending = false;
+
+			this._onSyncOut({w:'ins', t:'sml', d: Blackprint._modulesURL.map(v=> v._url)});
+		}, 2000);
+	}
+
 	async _syncModuleList(urls){
 		this._skipEvent = true;
 
@@ -74,5 +92,13 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		}
 
 		this._skipEvent = false;
+	}
+
+	clearNodes(){
+		this._skipEvent = true;
+		this.instance.clearNodes();
+		this._skipEvent = false;
+
+		this._onSyncOut({w:'ins', t:'c'})
 	}
 }
