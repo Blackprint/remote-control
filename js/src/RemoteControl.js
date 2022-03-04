@@ -125,10 +125,7 @@ class RemoteControl extends RemoteBase {
 				// Disable remote on blocked instance's nodes/cable sync
 				this.emit('sketch.import.cancel', {data});
 				console.error("Import was denied, the remote control will be disabled");
-				this.onSyncIn = ()=>{};
-				this.onSyncOut = ()=>{};
-				this.emit('disabled');
-				this._skipEvent = true;
+				this.disable();
 			}
 		}
 		else await this.instance.importJSON(data, options);

@@ -85,13 +85,29 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		else {
 			// Disable remote on blocked module sync
 			console.error("Loaded module sync was denied, the remote control will be disabled");
-			this.onSyncIn = ()=>{};
-			this.onSyncOut = ()=>{};
-			this.emit('disabled');
-			this._skipEvent = true;
+			this.disable();
 		}
 
 		this._skipEvent = false;
+	}
+
+	disable(){
+		if(this.disabled) return;
+
+		let { onSyncIn, onSyncOut } = this;
+		this.enable = () => {
+			this.onSyncIn = onSyncIn;
+			this.onSyncOut = onSyncOut;
+			this.disabled = false;
+			this._skipEvent = false;
+			this.emit('enabled');
+		}
+
+		this.onSyncIn = ()=>{};
+		this.onSyncOut = ()=>{};
+		this.emit('disabled');
+		this.disabled = true;
+		this._skipEvent = true;
 	}
 
 	clearNodes(){
