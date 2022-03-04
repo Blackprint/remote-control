@@ -12,7 +12,36 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		super();
 		this.instance = instance;
 		this._skipEvent = false;
-		instance._remote = this;
+
+		if(instance._remote == null)
+			instance._remote = this;
+		else {
+			if(instance._remote.constructor === Array)
+				instance._remote.push(this);
+			else{
+				instance._remote = [instance._remote, this];
+				instance._remote.importJSON = function(){
+					let ref = this;
+					for (var i = 0; i < ref.length; i++) {
+						let temp = ref[i];
+						if(temp.isSketch){
+							let func = temp.importJSON;
+							func.apply(temp, arguments);
+							break;
+						}
+					}
+				}
+			}
+
+			let ref = instance._remote;
+			let sketchCount = 0;
+			for (var i = 0; i < ref.length; i++) {
+				if(ref[i].isSketch && ++sketchCount){
+					ref.splice(i, 1);
+					throw new Error("Can't use multiple remote sketch in one instance");
+				}
+			}
+		}
 	}
 
 	async importRemoteJSON(){
@@ -91,6 +120,10 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		this._skipEvent = false;
 	}
 
+	destroy(){
+		this.disable();
+		delete this.instance._remote;
+	}
 	disable(){
 		if(this.disabled) return;
 
@@ -116,5 +149,37 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		this._skipEvent = false;
 
 		this._onSyncOut({w:'ins', t:'c'})
+	}
+
+	_pendingRemoteModule = {};
+	async _answeredRemoteModule(namespace, url){
+		if(!url)
+			throw new Error("Can't obtain module URL from remote for: "+namespace);
+
+		let temp = Blackprint._modulesURL.map(v => v._url);
+		if(!temp.includes(url)){
+			temp.push(url);
+
+			try{
+				await this._syncModuleList(temp);
+			} catch(e){console.error(e)}
+		}
+
+		let obj = this._pendingRemoteModule[namespace];
+		if(obj == null) return;
+		setTimeout(()=> {
+			obj.resolve();
+			delete this._pendingRemoteModule[namespace];
+		}, 100);
+	}
+	_askRemoteModule(namespace){
+		let temp = this._pendingRemoteModule[namespace];
+		if(temp == null){
+			temp = this._pendingRemoteModule[namespace] = {};
+			temp.promise = new Promise(resolve => temp.resolve = resolve);
+		}
+
+		this._onSyncOut({w:'ins', t:'askrm', nm: namespace});
+		return temp.promise;
 	}
 }

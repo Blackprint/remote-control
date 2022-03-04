@@ -115,8 +115,13 @@ class RemoteEngine extends RemoteBase {
 				if(iface != null) // The index mustn't be occupied by other iface
 					throw new Error("Node list was not synced");
 
+				let namespace = data.nm;
+				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+				if(clazz == null)
+					await this._askRemoteModule(namespace);
+
 				this._skipEvent = true;
-				let newIface = this.instance.createNode(data.nm);
+				let newIface = this.instance.createNode(namespace);
 				this._skipEvent = false;
 
 				if(ifaceList.indexOf(newIface) !== data.i)
@@ -164,6 +169,13 @@ class RemoteEngine extends RemoteBase {
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
 				this._onSyncOut({w:'ins', t:'ci', d: this.jsonTemp});
+			else if(data.t === 'askrm'){
+				let namespace = data.nm;
+				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
+			}
+			else if(data.t === 'addrm')
+				this._answeredRemoteModule(data.nm, data.d);
 			else if(data.t === 'nidc'){ // node id changed
 				this._skipEvent = true;
 				let iface = ifaceList[data.i];
