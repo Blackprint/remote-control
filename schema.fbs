@@ -1,0 +1,30 @@
+namespace Blackprint.RemoteSchema;
+
+// ToDo: continue this schema after some roadmap has been completed
+// FindAll : "._onSyncOut(" in "./js/src/*"
+
+// bool | byte | ubyte | short | ushort | int | uint | float | long | ulong | double | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64 | float32 | float64 | string
+
+enum PortSource: ubyte { Input = 0, Output = 1 }
+struct Port {
+	index: uint;
+	source: PortSource;
+	name: string;
+}
+
+enum Which: ubyte { Node = 0, Cable, Instance, Sketch = 3, Error=15 }
+enum NodeAction:		ubyte { Create = 0, Delete, Sync }
+enum CableAction:		ubyte { Create = 0, Delete }
+enum InstanceAction: 	ubyte { Create = 0, Delete, ImportJSON, SyncModule }
+enum SketchAction:		ubyte { Create = 0, Delete }
+enum ErrorAction:		ubyte { Any = 0 }
+
+union Data { string, uint }
+
+table Event {
+	uid: string;
+	which: Which; // Enum
+	type: Type; // Enum
+	ifaceIndex: uint;
+	data: Data;
+}
