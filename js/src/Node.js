@@ -34,12 +34,14 @@ Blackprint.Node.prototype.syncOut = function(id, data){
 }
 
 function clearPrivateField(obj){
-	if(obj.constructor === Array){
+	if(obj == null) return obj;
+
+	if(obj instanceof Array){
 		let temp = obj.slice(0);
 		for (var i = 0; i < temp.length; i++) {
 			let ref = temp[i];
 
-			if(ref.constructor === Array || ref.constructor === Object)
+			if(typeof ref === 'object')
 				temp[i] = clearPrivateField(ref);
 		}
 
@@ -54,7 +56,7 @@ function clearPrivateField(obj){
 
 		let ref = obj[key];
 
-		if(ref.constructor === Array || ref.constructor === Object)
+		if(typeof ref === 'object')
 			temp[key] = clearPrivateField(ref);
 		else temp[key] = ref;
 	}
