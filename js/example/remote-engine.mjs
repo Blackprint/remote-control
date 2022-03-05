@@ -45,7 +45,7 @@ Blackprint.onModuleConflict = async (namespace, old, now) => {};
 let engineStartup = Date.now();
 io.on('connection', client => {
 	client.on('relay', data => remote.onSyncIn(data));
-	remote.onSyncOut = data => client.volatile.emit('relay', data);
+	remote.onSyncOut = data => client.emit('relay', data);
 
 	console.log('Remote control: connected');
 	client.on('disconnect', () => console.log('Remote control: disconnected'));
