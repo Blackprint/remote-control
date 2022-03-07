@@ -7,7 +7,4 @@ src
 pnpm-lock.yaml
 node_modules
 gulpfile.js
-dist/engine.*
-dist/nodes-*
-dist/_entry.*
-dist/blackprint.*
+utils
