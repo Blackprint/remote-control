@@ -54,10 +54,12 @@ This is just relaying server with Socket.io, you can customize it with WebRTC or
 ```js
 let port = 2345;
 let httpServer = require('http').createServer();
-let io = require('socket.io')(httpServer);
+let io = require('socket.io')(httpServer, {
+  cors: { origin: ["http://localhost:6789", "https://blackprint.github.io"]}
+});
 
 io.on('connection', client => {
-	client.on('relay', data => client.broadcast('relay', data));
+	client.on('relay', data => client.broadcast.emit('relay', data));
 
 	console.log("A client was connected");
 	client.on('disconnect', ()=> console.log("A client got disconnected"));
