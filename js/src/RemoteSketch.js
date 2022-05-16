@@ -354,7 +354,7 @@ class RemoteSketch extends RemoteControl {
 					let portList = iface[data.s];
 					let port = portList[data.n];
 
-					let el = portList._list.getElement(port);
+					let el = portList._portList.getElement(port);
 
 					this._skipEvent = true;
 					let rect = port.findPortElement(el).getBoundingClientRect();
