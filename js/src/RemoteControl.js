@@ -98,7 +98,9 @@ class RemoteControl extends RemoteBase {
 	}
 
 	async sendSketchToRemote(){
-		this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
+		this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON({
+			environment: false
+		})});
 	}
 
 	_saveSketchToRemote;
@@ -109,7 +111,9 @@ class RemoteControl extends RemoteBase {
 		this.emit('remote-save.reset.time');
 		this._saveSketchToRemote = setTimeout(()=> {
 			this.emit('remote-save.begin');
-			this._onSyncOut({w:'ins', t:'ssk', d: this.instance.exportJSON()});
+			this._onSyncOut({w:'ins', t:'ssk', d: this.instance.exportJSON({
+				environment: false
+			})});
 		}, this.saveWhenIdle);
 	}
 
@@ -251,7 +255,9 @@ class RemoteControl extends RemoteBase {
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
-				this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON()});
+				this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON({
+					environment: false
+				})});
 			else if(data.t === 'askrm'){
 				let namespace = data.nm;
 				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
