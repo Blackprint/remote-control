@@ -120,6 +120,26 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		this._skipEvent = false;
 	}
 
+	async onSyncIn(data){
+		data = JSON.parse(data);
+
+		let { ifaceList } = this.instance;
+
+		if(data.w === 'p'){
+			let iface = ifaceList[data.i];
+			if(iface == null)
+				throw new Error("Node list was not synced");
+
+			let port = iface[data.ps][data.n];
+
+			if(data.t === 's') // split
+				Blackprint.Port.StructOf.split(port);
+			else if(data.t === 'uns') // unsplit
+				Blackprint.Port.StructOf.unsplit(port);
+		}
+		else return data;
+	}
+
 	destroy(){
 		this.disable();
 		delete this.instance._remote;

@@ -139,7 +139,9 @@ class RemoteControl extends RemoteBase {
 	}
 
 	async onSyncIn(data){
-		data = JSON.parse(data);
+		data = await super.onSyncIn(data);
+		if(data == null) return;
+
 		if(data.w === 'skc') return data;
 
 		let { ifaceList } = this.instance;

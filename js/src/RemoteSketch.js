@@ -206,6 +206,20 @@ class RemoteSketch extends RemoteControl {
 			that._onSyncOut({uid, w:'skc', t:'cd', ci});
 		});
 
+		let portSplit;
+		instance.on('_port.split', portSplit = ({ port }) => {
+			if(that._skipEvent) return;
+			let i = ifaceList.indexOf(port.iface);
+			that._onSyncOut({uid, w:'p', t:'s', i, ps: port.source, n: port.name});
+		});
+
+		let portUnsplit;
+		instance.on('_port.unsplit', portUnsplit = ({ port }) => {
+			if(that._skipEvent) return;
+			let i = ifaceList.indexOf(port.iface);
+			that._onSyncOut({uid, w:'p', t:'uns', i, ps: port.source, n: port.name});
+		});
+
 		let destroyTemp = this.destroy;
 		this.destroy = function(){
 			$window
@@ -215,6 +229,8 @@ class RemoteSketch extends RemoteControl {
 			instance.off('cable.create.branch', cableCreatedBranch);
 			instance.off('cable.created', cableCreated);
 			instance.off('cable.deleted', cableDeleted);
+			instance.off('_port.split', portSplit);
+			instance.off('_port.unsplit', portUnsplit);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
@@ -455,14 +471,21 @@ let win = window.open('http://localhost:6789/dev.html#page/sketch/1', 'ay', 'pop
 win.onclick = function(){
 	win.onclick = null;
 	win.ins = new win.Blackprint.RemoteSketch(win.SketchList[0]);
-	win.onmessage = function(msg){ win.ins.onSyncIn(msg.data) };
+	win.onmessage = function(msg){
+		if(msg.data.constructor === String) win.ins.onSyncIn(msg.data);
+	};
 	win.console.log = console.log;
 	win.console.error = console.error;
 	win.ins.onSyncOut = v => win.opener.postMessage(v);
 
 	let ins = new Blackprint.RemoteSketch(SketchList[0]);
-	window.onmessage = function(msg){ ins.onSyncIn(msg.data) };
+	window.onmessage = function(msg){
+		if(msg.data.constructor === String) ins.onSyncIn(msg.data);
+	};
 	window.onbeforeunload = ()=> win.close();
 	ins.onSyncOut = v => win.postMessage(v);
+
+	// Use this to import from remote
+	// win.ins.importRemoteJSON()
 }
  */
