@@ -32,7 +32,7 @@ function initContainer(instance) {
 	return instance.scope('remote-sketch');
 }
 
-if(globalThis.sf != null){
+if(globalThis.sf != null && Blackprint.Sketch != null){
 	sf.$(function(){
 		Blackprint.space.model('remote-sketch', function(My){
 			My.remotes = [];
