@@ -68,7 +68,7 @@ class RemoteControl extends RemoteBase {
 		});
 
 		let evModuleDelete;
-		Blackprint.on('moduleDelete', evModuleDelete = ev => {
+		Blackprint.on('module.delete', evModuleDelete = ev => {
 			if(this._skipEvent) return;
 			this.syncModuleList();
 		});
