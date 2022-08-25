@@ -1,4 +1,4 @@
-Blackprint.Node.prototype.syncOut = function(id, data){
+Blackprint.Node.prototype.syncOut = function(id, data=''){
 	if(this.instance._remote == null || this._syncronizing || this.instance.syncDataOut === false)
 		return;
 

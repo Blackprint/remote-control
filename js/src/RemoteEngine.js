@@ -1,3 +1,5 @@
+// Remote Control between Engine <-> Sketch
+
 // ToDo: port to PHP, Golang, and other programming languages
 class RemoteEngine extends RemoteBase {
 	constructor(instance){
@@ -59,9 +61,15 @@ class RemoteEngine extends RemoteBase {
 		}
 	}
 
-	async onSyncIn(data){
-		data = await super.onSyncIn(data);
+	async onSyncIn(data, _parsed){
+		if(!_parsed)
+			data = await super.onSyncIn(data);
+
 		if(data == null) return;
+		if(data.w === 'skc') return; // Skip any sketch event
+		if(!_parsed && this._syncInWait != null && data.w !== 'ins' && data.t !== 'addrm'){
+			return this._syncInWait.push(data);
+		}
 
 		let { ifaceList } = this.instance;
 
@@ -71,10 +79,20 @@ class RemoteEngine extends RemoteBase {
 			let ifaceOutput = ifaceList[out.i];
 
 			if(data.t === 'c'){ // connect
-				let inputPort = ifaceInput[inp.s][inp.n];
-				let outputPort = ifaceOutput[out.s][out.n];
+				this._skipEvent = true;
+				let inputPort, outputPort;
+				if(inp.s === 'route'){
+					ifaceOutput.node.routes.routeTo(ifaceInput);
+					this._skipEvent = false;
+					return;
+				}
+				else{
+					inputPort = ifaceInput[inp.s][inp.n];
+					outputPort = ifaceOutput[out.s][out.n];
+				}
 
 				inputPort.connectPort(outputPort);
+				this._skipEvent = false;
 				return;
 			}
 
@@ -102,7 +120,7 @@ class RemoteEngine extends RemoteBase {
 			if(data.t === 's'){ // sync
 				if(iface == null)
 					return; // Maybe when creating nodes it's trying to syncing data
-					// throw new Error("Node list was not synced");
+					// return this._resync('Node');
 
 				let node = iface.node;
 				let temp = data.d;
@@ -115,22 +133,26 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'c'){ // created
 				if(iface != null) // The index mustn't be occupied by other iface
-					throw new Error("Node list was not synced");
+					return this._resync('Node');
 
 				let namespace = data.nm;
 				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
-				if(clazz == null)
+				if(clazz == null){
+					this._syncInWait ??= [];
 					await this._askRemoteModule(namespace);
+				}
 
 				this._skipEvent = true;
-				let newIface = this.instance.createNode(namespace);
+				let newIface = this.instance.createNode(namespace, data);
 				this._skipEvent = false;
 
 				if(ifaceList.indexOf(newIface) !== data.i)
-					throw new Error("Node list was not synced");
+					return this._resync('Node');
+
+				await this._syncInWaitContinue();
 			}
 			else if(data.t === 'd'){ // deleted
-				if(iface == null) throw new Error("Node list was not synced");
+				if(iface == null) return this._resync('Node');
 				this.instance.deleteNode(iface);
 			}
 		}
@@ -146,7 +168,6 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'ci'){ // clean import
 				this._skipEvent = true;
-				// instance.clearNodes();
 
 				this.jsonTemp = data.d;
 				this.jsonSyncTime = Date.now();
@@ -184,7 +205,7 @@ class RemoteEngine extends RemoteBase {
 
 				try{
 					if(iface == null)
-						throw new Error("Node list was not synced");
+						return this._resync('Node');
 
 					if(iface.id !== data.f)
 						throw new Error("Old node id was different");
@@ -199,6 +220,23 @@ class RemoteEngine extends RemoteBase {
 				finally {
 					this._skipEvent = false;
 				}
+			}
+			else if(data.t === 'jsonim'){
+				this._skipEvent = true;
+				await this.instance.importJSON(data.raw, {appendMode: data.app});
+				this._skipEvent = false;
+			}
+			else if(data.t === 'pdc'){
+				let iface = ifaceList[data.i];
+				iface.input[data.k].default = data.v;
+
+				let node = iface.node;
+				node.update?.();
+				node.routes.routeOut();
+			}
+			else if(data.t === 'prsc'){
+				let iface = ifaceList[data.i];
+				iface.output[data.k].allowResync = data.v;
 			}
 		}
 	}

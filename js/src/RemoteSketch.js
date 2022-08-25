@@ -1,42 +1,38 @@
+// Remote Control between Sketch <-> Sketch
+
 function initContainer(instance) {
 	let spaceEl = instance.scope.domList[0];
 
 	// This must be template only, don't insert dynamic data with ${...}
 	spaceEl.querySelector('sf-m[name="container"]').insertAdjacentHTML('beforeEnd', `<sf-m name="remote-sketch">
-		<div class="cursor" sf-each="val in remotes" style="transform: translate3d({{ val.x }}px, {{ val.y }}px, 0px)">
-			<i class="fa fa-mouse-pointer"></i>
-			<span>{{ val.uid }}</span>
+		<div>
+			<div class="cursor" sf-each="val in remotes" style="transform: translate3d({{ val.x }}px, {{ val.y }}px, 0px)">
+				<i class="fa fa-mouse-pointer"></i>
+				<span>{{ val.uid }}</span>
+			</div>
 		</div>
-	</sf-m>
-	<style>
-		sf-m[name="remote-sketch"] {
-			pointer-events: none;
-			color: white;
-			top: 0;
-			position: absolute;
-		}
-		sf-m[name="remote-sketch"] .cursor {
-			transition: 0.15s ease-out transform;
-			will-change: transform;
-			backface-visibility: hidden;
-		}
-		sf-m[name="remote-sketch"] span {
-			vertical-align: bottom;
-			background: #37b0219e;
-			padding: 5px 8px;
-			font-size: 12px;
-			border-radius: 10px;
-		}
-	</style>`);
+		<div>
+			<div class="selection-box" sf-each="val in remoteSelects" style="
+				height: {{ val.h }}px;
+				width: {{ val.w }}px;
+				transform: translate3d({{ val.x }}px, {{ val.y }}px, 0px)
+						scale({{ val.ix ? '-':'' }}1, {{ val.iy ? '-':'' }}1);"></div>
+		</div>
+	</sf-m>`);
 
 	return instance.scope('remote-sketch');
 }
 
-if(globalThis.sf != null && Blackprint.Sketch != null){
+if(globalThis.sf != null){
 	sf.$(function(){
-		Blackprint.space.model('remote-sketch', function(My){
-			My.remotes = [];
-		});
+		setTimeout(() => {
+			if(Blackprint.Sketch != null){
+				Blackprint.space.model('remote-sketch', function(My){
+					My.remotes = [];
+					My.remoteSelects = {};
+				});
+			}
+		}, 200);
 	});
 }
 
@@ -115,16 +111,23 @@ class RemoteSketch extends RemoteControl {
 				}, {capture: true});
 			}
 			else {
-				if(container.select.show){ // selecting
-					return; // Disable sync for now
-					that._onSyncOut({uid, w:'skc', t:'selpd', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
+				setTimeout(() => {
+					if(container.select.show){ // selecting
+						that._onSyncOut({uid, w:'skc', t:'selpd',
+							x:ev.clientX - container.offset.x - container.pos.x,
+							y:ev.clientY - container.offset.y - container.pos.y
+						});
 
-					selpu = true;
-					$window.once('pointerup', () => {
-						if(selpu === false) return;
-						that._onSyncOut({uid, w:'skc', t:'selpu', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
-					}, {capture: true});
-				}
+						selpu = true;
+						$window.once('pointerup', () => {
+							if(selpu === false) return;
+							that._onSyncOut({uid, w:'skc', t:'selpu',
+								x:ev.clientX - container.offset.x - container.pos.x,
+								y:ev.clientY - container.offset.y - container.pos.y
+							});
+						}, {capture: true});
+					}
+				}, 50);
 			}
 		}
 
@@ -156,8 +159,9 @@ class RemoteSketch extends RemoteControl {
 		instance.on('cable.created', cableCreated = ({ port, cable }) => {
 			if(that._skipEvent) return;
 			let i = ifaceList.indexOf(port.iface);
+			let iER = port.isRoute; // isEdgeRoute
 
-			that._onSyncOut({uid, w:'skc', t:'ccd', i, n: port.name, s: port.source});
+			that._onSyncOut({uid, w:'skc', t:'ccd', i, n: port.name || '', s: iER ? 'route' : port.source});
 
 			cpu = false;
 			$window.once('pointerup', (event) => {
@@ -205,19 +209,12 @@ class RemoteSketch extends RemoteControl {
 			cable._evDisconnected = true;
 			that._onSyncOut({uid, w:'skc', t:'cd', ci});
 		});
-
-		let portSplit;
-		instance.on('_port.split', portSplit = ({ port }) => {
+		
+		let edNodeComment;
+		instance.on('_editor.node.comment', edNodeComment = ({ iface }) => {
 			if(that._skipEvent) return;
-			let i = ifaceList.indexOf(port.iface);
-			that._onSyncOut({uid, w:'p', t:'s', i, ps: port.source, n: port.name});
-		});
-
-		let portUnsplit;
-		instance.on('_port.unsplit', portUnsplit = ({ port }) => {
-			if(that._skipEvent) return;
-			let i = ifaceList.indexOf(port.iface);
-			that._onSyncOut({uid, w:'p', t:'uns', i, ps: port.source, n: port.name});
+			let i = ifaceList.indexOf(iface);
+			that._onSyncOut({uid, w:'skc', t:'enoco', i, v: iface.comment});
 		});
 
 		let destroyTemp = this.destroy;
@@ -229,8 +226,7 @@ class RemoteSketch extends RemoteControl {
 			instance.off('cable.create.branch', cableCreatedBranch);
 			instance.off('cable.created', cableCreated);
 			instance.off('cable.deleted', cableDeleted);
-			instance.off('_port.split', portSplit);
-			instance.off('_port.unsplit', portUnsplit);
+			instance.off('_editor.node.comment', edNodeComment);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
@@ -293,15 +289,19 @@ class RemoteSketch extends RemoteControl {
 		let iface;
 		if(data.i != null){
 			iface = this.instance.ifaceList[data.i];
-			if(iface == null) throw new Error("Node list was not synced");
+			if(iface == null) return this._resync('Node');
 		}
 
 		if(data.w === 'skc'){ // sketch event
 			if(data.t === 'selpd'){ // selection pointer down
-				// ToDo
+				let { remoteSelects } = this.instance.scope('remote-sketch');
+				if(remoteSelects[data.uid] == null){
+					sf.Obj.set(remoteSelects, data.uid, { w:0, h:0, x: data.x, y: data.y, ix: false, iy: false });
+				}
 			}
 			else if(data.t === 'selpu'){ // selection pointer up
-				// ToDo
+				let { remoteSelects } = this.instance.scope('remote-sketch');
+				sf.Obj.delete(remoteSelects, data.uid);
 			}
 			else if(data.t.slice(0, 1) === 'n'){ // node
 				let container = this.instance.scope('container');
@@ -316,12 +316,15 @@ class RemoteSketch extends RemoteControl {
 					let mx = (data.x - iface.x) * devicePixelRatio * container.scale;
 					let my = (data.y - iface.y) * devicePixelRatio * container.scale;
 
-					iface.moveNode({
+					let evTemp = {
 						stopPropagation(){}, preventDefault(){},
 						target: iface.$el[0],
 						movementX: mx,
 						movementY: my
-					});
+					};
+
+					iface.moveNode(evTemp);
+					container.moveSelection(evTemp, iface);
 
 					this._clearSelected(container);
 					this._temporarySelection(container, temp);
@@ -334,12 +337,12 @@ class RemoteSketch extends RemoteControl {
 
 				if(data.ci != null){
 					cable = cables.list[data.ci];
-					if(cable == null) throw new Error("Cable list was not synced");
+					if(cable == null) return this._resync('Cable');
 				}
 
 				if(data.nci != null){
 					newCable = cables.list[data.nci];
-					if(newCable == null) throw new Error("Cable list was not synced");
+					if(newCable == null) return this._resync('Cable');
 				}
 
 				if(data.t === 'cpd'){ // cable pointer down
@@ -367,15 +370,22 @@ class RemoteSketch extends RemoteControl {
 				}
 
 				else if(data.t === 'ccd'){ // cable created down
-					let portList = iface[data.s];
-					let port = portList[data.n];
-
-					let el = portList._portList.getElement(port);
-
-					this._skipEvent = true;
-					let rect = port.findPortElement(el).getBoundingClientRect();
-					let cable = port.createCable(rect);
-					this._skipEvent = false;
+					if(data.s === 'route'){
+						this._skipEvent = true;
+						iface.node.routes.createCable();
+						this._skipEvent = false;
+					}
+					else {
+						let portList = iface[data.s];
+						let port = portList[data.n];
+	
+						let el = portList._portList.getElement(port);
+	
+						this._skipEvent = true;
+						let rect = port.findPortElement(el).getBoundingClientRect();
+						let cable = port.createCable(rect);
+						this._skipEvent = false;
+					}
 				}
 				else if(data.t === 'ccu'){ // cable created up
 					cable.head2[0] = data.x;
@@ -446,7 +456,19 @@ class RemoteSketch extends RemoteControl {
 				}
 				else if(data.t === 'pm'){ // pointer move
 					// ToDo
+					let { remoteSelects } = this.instance.scope('remote-sketch');
+
+					if(remoteSelects[data.uid] != null){
+						let ref = remoteSelects[data.uid];
+						ref.ix = ref.x > cursor.x;
+						ref.iy = ref.y > cursor.y;
+						ref.w = Math.abs(ref.x - cursor.x);
+						ref.h = Math.abs(ref.y - cursor.y);
+					}
 				}
+			}
+			else if(data.t === 'enoco'){
+				iface.comment = data.v;
 			}
 			else throw new Error("Unhandled sketch control: "+ data.t);
 		}

@@ -8,6 +8,20 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	onSyncOut(data){}
 	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 
+	/* Known vulnerability, but currently unsolveable:
+		- Environment data can be passed thru syncOut, we can censor the data but if the data get manipulated before being send then it will more difficult to detect the data that should be censored, the current solution is just only use this remote feature with your trusted friend or just use it in secure environment that only you who can access it. We can also fully block all data sync to avoid this vulnerability, so we will need permission based system
+	*/
+
+	__resync = false;
+	_resync(which){
+		if(which) console.error(which + " list was not synced");
+		if(this.__resync) return;
+		this.__resync = true;
+		console.log("Blackprint: Resyncing diagrams");
+		this.importRemoteJSON();
+		this.__resync = false;
+	}
+
 	constructor(instance){
 		super();
 		this.instance = instance;
@@ -20,17 +34,17 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 				instance._remote.push(this);
 			else{
 				instance._remote = [instance._remote, this];
-				instance._remote.importJSON = function(){
-					let ref = this;
-					for (var i = 0; i < ref.length; i++) {
-						let temp = ref[i];
-						if(temp.isSketch){
-							let func = temp.importJSON;
-							func.apply(temp, arguments);
-							break;
-						}
-					}
-				}
+				// instance._remote.importJSON = function(){
+				// 	let ref = this;
+				// 	for (var i = 0; i < ref.length; i++) {
+				// 		let temp = ref[i];
+				// 		if(temp.isSketch){
+				// 			let func = temp.importJSON;
+				// 			func.apply(temp, arguments);
+				// 			break;
+				// 		}
+				// 	}
+				// }
 			}
 
 			let ref = instance._remote;
@@ -120,6 +134,19 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		this._skipEvent = false;
 	}
 
+	async _syncInWaitContinue(){
+		let temp = this._syncInWait;
+		if(temp == null) return;
+
+		for (let i=0; i < temp.length; i++) {
+			let ref = temp.splice(i--, 1)[0];
+			await this.onSyncIn(ref, true);
+		}
+
+		if(this._syncInWait.length === 0)
+			this._syncInWait = null;
+	}
+
 	async onSyncIn(data){
 		data = JSON.parse(data);
 
@@ -128,7 +155,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		if(data.w === 'p'){
 			let iface = ifaceList[data.i];
 			if(iface == null)
-				throw new Error("Node list was not synced");
+				return this._resync('Node');
 
 			let port = iface[data.ps][data.n];
 
