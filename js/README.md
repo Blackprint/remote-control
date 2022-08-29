@@ -6,17 +6,15 @@ This module will provide an ability for Blackprint to control engine remotely an
 
 Any ports data flow for sketch will be disabled if it's connected to remote engine. It's not recommended to combine different data flow between `remote <~> remote` in just one instance, you should create two different instance for them and use feature from other module/library to sync data between the two instance itself.
 
-> Don't forget to update the version, it may get outdated
-
 ```xml
-<script src="https://cdn.jsdelivr.net/npm/scarletsframe@0.35.9/dist/scarletsframe.dev.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/engine@0.6.2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/remote-control@0.1/dist/remote-control.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.6.3/dist/blackprint.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.6.3/dist/blackprint.sf.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/scarletsframe@0.35.x/dist/scarletsframe.dev.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/engine@0.7.x"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/remote-control@0.1.x/dist/remote-control.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.7.x/dist/blackprint.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.7.x/dist/blackprint.sf.js"></script>
 <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
 
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.6.3/dist/blackprint.sf.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.7.x/dist/blackprint.sf.css">
 ```
 
 ---
