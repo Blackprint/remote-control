@@ -99,7 +99,7 @@ class RemoteEngine extends RemoteBase {
 			let cables = ifaceInput[inp.s][inp.n].cables;
 			let cable;
 			for (var i = 0; i < cables.length; i++) {
-				if(cables[i].output === ifaceOutput){
+				if(cables[i].output.iface === ifaceOutput){
 					cable = cables[i];
 					break;
 				}
