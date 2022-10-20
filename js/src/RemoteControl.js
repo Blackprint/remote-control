@@ -368,7 +368,11 @@ class RemoteControl extends RemoteBase {
 			}
 			else if(data.t === 'pdc'){
 				let iface = ifaceList[data.i];
-				iface.input[data.k].default = data.v;
+				let port = iface.input[data.k];
+				port.default = data.v;
+
+				if(port._boxInput != null)
+					port._boxInput.value = data.v;
 
 				let node = iface.node;
 				node.update?.();
