@@ -150,7 +150,14 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	async onSyncIn(data){
 		data = JSON.parse(data);
 
-		let { ifaceList } = this.instance;
+		let instance = this.instance;
+		if(data.fid != null){
+			instance = this.instance.functions[data.fid].used[0]?.bpInstance;
+			if(instance == null)
+				return this._resync('FunctionNode');
+		}
+
+		let { ifaceList } = instance;
 
 		if(data.w === 'p'){
 			let iface = ifaceList[data.i];
@@ -159,10 +166,45 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 
 			let port = iface[data.ps][data.n];
 
+			this._skipEvent = true;
 			if(data.t === 's') // split
 				Blackprint.Port.StructOf.split(port);
 			else if(data.t === 'uns') // unsplit
 				Blackprint.Port.StructOf.unsplit(port);
+			else{
+				this._skipEvent = false;
+				return data;
+			}
+			this._skipEvent = false;
+		}
+		else if(data.w === 'ins'){
+			this._skipEvent = true;
+			if(data.t === 'cvn'){ // create variable.new
+				if(data.scp === Blackprint.VarScope.Public){
+					this.instance.createVariable(data.id, {
+						title: data.ti,
+						description: data.dsc
+					});
+				}
+				else {
+					this.instance.functions[data.fid].createVariable(data.id, {
+						title: data.ti,
+						description: data.dsc,
+						scope: data.scp
+					});
+				}
+			}
+			else if(data.t === 'cfn'){ // create function.new
+				this.instance.createFunction(data.id, {
+					title: data.ti,
+					description: data.dsc
+				});
+			}
+			else{
+				this._skipEvent = false;
+				return data;
+			}
+			this._skipEvent = false;
 		}
 		else return data;
 	}
