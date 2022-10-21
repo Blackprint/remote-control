@@ -41,21 +41,17 @@ class RemoteSketch extends RemoteControl {
 		super(instance);
 		this.isSketch = true;
 
-		this._scope = initContainer(instance);
-		let { ifaceList } = instance;
-
 		let that = this;
 		let $window = $(sf.Window);
 		let uid = Math.random()*10000 | 0; // ToDo: replace this on the relay server
 
-		let container = this.instance.scope('container');
-		function getSelectedIDs(){
+		function getSelectedIDs(_nodeList, container){
 			let {cableScope, nodeScope} = container;
 			let cSelected = cableScope.selected;
 			let nSelected = nodeScope.selected;
 
 			// Don't use 'nodeScope' as the index may get changed on focus/click
-			let nodeList = container.$space.sketch.ifaceList;
+			let nodeList = _nodeList;
 
 			let sc = [];
 			for (var i = 0; i < cSelected.length; i++)
@@ -68,9 +64,17 @@ class RemoteSketch extends RemoteControl {
 			return {sc, sn};
 		}
 
-		let npu, cpu, selpu;
+		let npu, cpu, selpu, fid;
 		function pointerdown(ev){
 			if(that._skipEvent || !ev.isTrusted || ev.button !== 0) return;
+			let sketch = ev.target.closest('sketch-page');
+			if(sketch == null) return;
+
+			let instance = sketch.model.sketch;
+			let container = that._getContainer(instance);
+			let ifaceList = instance.ifaceList;
+
+			fid = getFunctionId(instance);
 			let node = ev.target.closest('.nodes .node');
 			let cable = ev.target.closest('.cables g');
 
@@ -79,14 +83,13 @@ class RemoteSketch extends RemoteControl {
 				if(iface == null) return; // Skip sync for custom node
 
 				let i = ifaceList.indexOf(node.model);
-
-				that._onSyncOut({uid, w:'skc', t:'npd', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y, i});
+				that._onSyncOut({uid, w:'skc', t:'npd', fid, x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y, i});
 
 				npu = true;
 				$window.once('pointerup', () => {
 					if(npu === false) return;
-					let {sn, sc} = getSelectedIDs();
-					that._onSyncOut({uid, w:'skc', t:'npu', x:iface.x, y:iface.y, i,
+					let {sn, sc} = getSelectedIDs(ifaceList, container);
+					that._onSyncOut({uid, w:'skc', t:'npu', x:iface.x, y:iface.y, i, fid,
 						sn, sc
 					});
 				}, {capture: true});
@@ -95,7 +98,7 @@ class RemoteSketch extends RemoteControl {
 				cable = cable.model;
 				let ci = container.cableScope.list.indexOf(cable);
 
-				that._onSyncOut({uid, w:'skc', t:'cpd',
+				that._onSyncOut({uid, w:'skc', t:'cpd', fid,
 				    x:ev.clientX-container.pos.x,
 				    y:ev.clientY-container.pos.y,
 					ci,
@@ -104,8 +107,8 @@ class RemoteSketch extends RemoteControl {
 				cpu = true;
 				$window.once('pointerup', () => {
 					if(cpu === false) return;
-					let {sn, sc} = getSelectedIDs();
-					that._onSyncOut({uid, w:'skc', t:'cpu', ci, sn, sc,
+					let {sn, sc} = getSelectedIDs(ifaceList, container);
+					that._onSyncOut({uid, w:'skc', t:'cpu', fid, ci, sn, sc,
 					    x:cable.head2[0], y:cable.head2[1],
 					});
 				}, {capture: true});
@@ -113,7 +116,7 @@ class RemoteSketch extends RemoteControl {
 			else {
 				setTimeout(() => {
 					if(container.select.show){ // selecting
-						that._onSyncOut({uid, w:'skc', t:'selpd',
+						that._onSyncOut({uid, w:'skc', t:'selpd', fid,
 							x:ev.clientX - container.offset.x - container.pos.x,
 							y:ev.clientY - container.offset.y - container.pos.y
 						});
@@ -121,7 +124,7 @@ class RemoteSketch extends RemoteControl {
 						selpu = true;
 						$window.once('pointerup', () => {
 							if(selpu === false) return;
-							that._onSyncOut({uid, w:'skc', t:'selpu',
+							that._onSyncOut({uid, w:'skc', t:'selpu', fid,
 								x:ev.clientX - container.offset.x - container.pos.x,
 								y:ev.clientY - container.offset.y - container.pos.y
 							});
@@ -139,6 +142,13 @@ class RemoteSketch extends RemoteControl {
 				return;
 			}
 
+			let sketch = ev.target.closest('sketch-page');
+			if(sketch == null) return;
+			sketch = sketch.model.sketch;
+
+			let container = that._getContainer(sketch);
+			fid = getFunctionId(sketch);
+
 			delayMoveEvent = true;
 			setTimeout(()=> {
 				delayMoveEvent = false;
@@ -148,7 +158,7 @@ class RemoteSketch extends RemoteControl {
 			}, 70);
 
 			lastMoveEv = null;
-			that._onSyncOut({uid, w:'skc', t:'pm', x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
+			that._onSyncOut({uid, w:'skc', t:'pm', fid, x:ev.clientX-container.pos.x, y:ev.clientY-container.pos.y});
 		}
 
 		$window
@@ -158,10 +168,13 @@ class RemoteSketch extends RemoteControl {
 		let cableCreated;
 		instance.on('cable.created', cableCreated = ({ port, cable }) => {
 			if(that._skipEvent) return;
+			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let iER = port.isRoute; // isEdgeRoute
+			fid = getFunctionId(port.iface);
 
-			that._onSyncOut({uid, w:'skc', t:'ccd', i, n: port.name || '', s: iER ? 'route' : port.source});
+			let container = that._getContainer(port);
+			that._onSyncOut({uid, w:'skc', t:'ccd', fid, i, n: port.name || '', s: iER ? 'route' : port.source});
 
 			cpu = false;
 			$window.once('pointerup', (event) => {
@@ -170,7 +183,7 @@ class RemoteSketch extends RemoteControl {
 				let list = container.cableScope.list;
 				let ci = list.indexOf(cable);
 
-				that._onSyncOut({uid, w:'skc', t:'ccu', x:cable.head2[0], y:cable.head2[1], ci});
+				that._onSyncOut({uid, w:'skc', t:'ccu', fid, x:cable.head2[0], y:cable.head2[1], ci});
 			}, {capture: true});
 		});
 
@@ -178,11 +191,12 @@ class RemoteSketch extends RemoteControl {
 		instance.on('cable.create.branch', cableCreatedBranch = ev => {
 			if(that._skipEvent) return;
 			let { event, cable, type } = ev; // Don't destructure newCable
+			let container = that._getContainer(cable);
 			let list = container.cableScope.list;
 			let ty = type === 'cablePath' ? 0 : 1;
 
 			let ci = list.indexOf(cable);
-			that._onSyncOut({uid, w:'skc', t:'ccbd', ci, ty,
+			that._onSyncOut({uid, w:'skc', t:'ccbd', ci, ty, fid,
 			    x:event.clientX - container.pos.x,
 			    y:event.clientY - container.pos.y,
 			});
@@ -193,7 +207,7 @@ class RemoteSketch extends RemoteControl {
 				let ci = list.indexOf(cable);
 				let nci = list.indexOf(ev.newCable);
 
-				that._onSyncOut({uid, w:'skc', t:'ccbu', ci, nci, ty,
+				that._onSyncOut({uid, w:'skc', t:'ccbu', ci, nci, ty, fid,
 				    x:event.clientX - container.pos.x,
 				    y:event.clientY - container.pos.y,
 				});
@@ -203,18 +217,20 @@ class RemoteSketch extends RemoteControl {
 		let cableDeleted;
 		instance.on('cable.deleted', cableDeleted = ({ cable }) => {
 			if(that._skipEvent || cable._evDisconnected) return;
+			let container = that._getContainer(cable);
 			let list = container.cableScope.list;
 			let ci = list.indexOf(cable);
 
 			cable._evDisconnected = true;
-			that._onSyncOut({uid, w:'skc', t:'cd', ci});
+			that._onSyncOut({uid, w:'skc', t:'cd', fid, ci});
 		});
 		
 		let edNodeComment;
 		instance.on('_editor.node.comment', edNodeComment = ({ iface }) => {
 			if(that._skipEvent) return;
 			let i = ifaceList.indexOf(iface);
-			that._onSyncOut({uid, w:'skc', t:'enoco', i, v: iface.comment});
+			fid = getFunctionId(iface);
+			that._onSyncOut({uid, w:'skc', t:'enoco', fid, i, v: iface.comment});
 		});
 
 		let destroyTemp = this.destroy;
@@ -232,6 +248,18 @@ class RemoteSketch extends RemoteControl {
 			this.onSyncOut = ()=>{};
 			destroyTemp();
 		}
+	}
+
+	_getContainer(obj){
+		// if instance
+		if(obj.scope != null) return obj.scope('container');
+
+		if(obj.owner != null) obj = obj.owner; // if cable
+		if(obj.iface != null) obj = obj.iface; // if port
+		if(obj.$el != null) // if iface
+			return obj.$el[0].closest('sketch-page').model.sketch.scope('container');
+
+		throw new Error("Fail to obtain container");
 	}
 
 	_applySelectedId(container, data){
@@ -286,25 +314,44 @@ class RemoteSketch extends RemoteControl {
 		data = await super.onSyncIn(data);
 		if(data == null) return;
 
+		let instance = this.instance;
+		if(data.fid != null){
+			// Use the curent active function page
+			let used = this.instance.functions[data.fid].used;
+			for (var i=0; i < used.length; i++) {
+				instance = used[i].$el[0].closest('.page-current');
+				if(instance != null){
+					instance = used[i].bpInstance;
+					break;
+				}
+			}
+
+			if(i === used.length) instance = this.instance.functions[data.fid].used[0].bpInstance;
+			if(instance == null)
+				return this._resync('FunctionNode');
+		}
+
+		let { ifaceList } = instance;
+
 		let iface;
 		if(data.i != null){
-			iface = this.instance.ifaceList[data.i];
+			iface = ifaceList[data.i];
 			if(iface == null) return this._resync('Node');
 		}
 
 		if(data.w === 'skc'){ // sketch event
 			if(data.t === 'selpd'){ // selection pointer down
-				let { remoteSelects } = this.instance.scope('remote-sketch');
+				let { remoteSelects } = instance.scope('remote-sketch');
 				if(remoteSelects[data.uid] == null){
 					sf.Obj.set(remoteSelects, data.uid, { w:0, h:0, x: data.x, y: data.y, ix: false, iy: false });
 				}
 			}
 			else if(data.t === 'selpu'){ // selection pointer up
-				let { remoteSelects } = this.instance.scope('remote-sketch');
+				let { remoteSelects } = instance.scope('remote-sketch');
 				sf.Obj.delete(remoteSelects, data.uid);
 			}
 			else if(data.t.slice(0, 1) === 'n'){ // node
-				let container = this.instance.scope('container');
+				let container = instance.scope('container');
 
 				if(data.t === 'npd'){ // node pointer down
 					// ToDo
@@ -331,7 +378,7 @@ class RemoteSketch extends RemoteControl {
 				}
 			}
 			else if(data.t.slice(0, 1) === 'c'){ // cable
-				let container = this.instance.scope('container');
+				let container = instance.scope('container');
 				let cables = container.cableScope;
 				let cable, newCable;
 
@@ -431,7 +478,8 @@ class RemoteSketch extends RemoteControl {
 				}
 			}
 			else if(data.t.slice(0, 1) === 'p'){ // pointer
-				let { remotes } = this._scope;
+				if(instance.pendingRender) return;
+				let { remotes } = instance._remoteScope ??= initContainer(instance);
 				let cursor;
 
 				for (var i = 0; i < remotes.length; i++) {
@@ -446,7 +494,8 @@ class RemoteSketch extends RemoteControl {
 					remotes.push(cursor);
 				}
 
-				let container = this.instance.scope('container');
+				let container = instance.scope('container');
+				if(instance.pendingRender) return;
 
 				cursor.x = data.x - container.offset.x;
 				cursor.y = data.y - container.offset.y;
@@ -456,7 +505,7 @@ class RemoteSketch extends RemoteControl {
 				}
 				else if(data.t === 'pm'){ // pointer move
 					// ToDo
-					let { remoteSelects } = this.instance.scope('remote-sketch');
+					let { remoteSelects } = instance.scope('remote-sketch');
 
 					if(remoteSelects[data.uid] != null){
 						let ref = remoteSelects[data.uid];
@@ -476,38 +525,3 @@ class RemoteSketch extends RemoteControl {
 }
 
 Blackprint.RemoteSketch = RemoteSketch;
-
-/*
-let ins = new Blackprint.RemoteSketch(SketchList[0]);
-ins.onSyncOut = v => ins.onSyncIn(v);
- */
-
-/*
-let win = window.open('https://output.jsbin.com/lijirat', 'ay', 'popup')
-window.onmessage = console.log;
-ins.onSyncOut = v => ins.onSyncIn(v);
-
----
-let win = window.open('http://localhost:6789/dev.html#page/sketch/1', 'ay', 'popup');
-
-win.onclick = function(){
-	win.onclick = null;
-	win.ins = new win.Blackprint.RemoteSketch(win.SketchList[0]);
-	win.onmessage = function(msg){
-		if(msg.data.constructor === String) win.ins.onSyncIn(msg.data);
-	};
-	win.console.log = console.log;
-	win.console.error = console.error;
-	win.ins.onSyncOut = v => win.opener.postMessage(v);
-
-	let ins = new Blackprint.RemoteSketch(SketchList[0]);
-	window.onmessage = function(msg){
-		if(msg.data.constructor === String) ins.onSyncIn(msg.data);
-	};
-	window.onbeforeunload = ()=> win.close();
-	ins.onSyncOut = v => win.postMessage(v);
-
-	// Use this to import from remote
-	// win.ins.importRemoteJSON()
-}
- */

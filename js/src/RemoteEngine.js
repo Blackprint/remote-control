@@ -5,17 +5,19 @@ class RemoteEngine extends RemoteBase {
 	constructor(instance){
 		super(instance);
 
-		let { ifaceList } = instance;
 		Blackprint.settings('_remoteEngine', true);
 		Blackprint.settings('visualizeFlow', true);
 
 		let evCableDisconnect;
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
+			let fid = getFunctionId(cable.output.iface);
+			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
 			cable._evDisconnected = true;
 			this._onSyncOut({
 				w:'c',
+				fid,
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
 				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
 				t:'d'
@@ -25,8 +27,12 @@ class RemoteEngine extends RemoteBase {
 		let evFlowEvent;
 		instance.on('_flowEvent', evFlowEvent = cable => {
 			if(this._skipEvent && !this._isImporting) return;
+			let fid = getFunctionId(cable.output.iface);
+			let ifaceList = cable.owner.iface.node.instance.ifaceList;
+
 			this._onSyncOut({
 				w:'c',
+				fid,
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
 				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
 				t:'f'
@@ -36,7 +42,9 @@ class RemoteEngine extends RemoteBase {
 		let evNodeSync;
 		instance.on('_node.sync', evNodeSync = ev => {
 			if(this._skipEvent && !this._isImporting) return;
-			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'})
+			let fid = getFunctionId(ev.iface);
+			let ifaceList = ev.iface.node.instance.ifaceList;
+			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'})
 		});
 
 		let evError;
@@ -71,7 +79,14 @@ class RemoteEngine extends RemoteBase {
 			return this._syncInWait.push(data);
 		}
 
-		let { ifaceList } = this.instance;
+		let instance = this.instance;
+		if(data.fid != null){
+			instance = this.instance.functions[data.fid].used[0]?.bpInstance;
+			if(instance == null)
+				return this._resync('FunctionNode');
+		}
+
+		let { ifaceList } = instance;
 
 		if(data.w === 'c'){ // cable
 			let {inp, out} = data;
@@ -89,6 +104,14 @@ class RemoteEngine extends RemoteBase {
 				else{
 					inputPort = ifaceInput[inp.s][inp.n];
 					outputPort = ifaceOutput[out.s][out.n];
+				}
+
+				if(outputPort == null && ifaceOutput.namespace === "BP/Fn/Input"){
+					outputPort = ifaceOutput.addPort(inputPort);
+				}
+
+				if(inputPort == null && ifaceInput.namespace === "BP/Fn/Output"){
+					inputPort = ifaceInput.addPort(outputPort);
 				}
 
 				inputPort.connectPort(outputPort);
@@ -136,14 +159,16 @@ class RemoteEngine extends RemoteBase {
 					return this._resync('Node');
 
 				let namespace = data.nm;
-				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
-				if(clazz == null){
-					this._syncInWait ??= [];
-					await this._askRemoteModule(namespace);
+				if(!namespace.startsWith("BPI/F/")){
+					let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+					if(clazz == null){
+						this._syncInWait ??= [];
+						await this._askRemoteModule(namespace);
+					}
 				}
 
 				this._skipEvent = true;
-				let newIface = this.instance.createNode(namespace, data);
+				let newIface = instance.createNode(namespace, data);
 				this._skipEvent = false;
 
 				if(ifaceList.indexOf(newIface) !== data.i)
@@ -153,12 +178,10 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'd'){ // deleted
 				if(iface == null) return this._resync('Node');
-				this.instance.deleteNode(iface);
+				instance.deleteNode(iface);
 			}
 		}
 		else if(data.w === 'ins'){ // instance
-			let instance = this.instance;
-
 			if(data.t === 'c'){ // clean nodes
 				this._skipEvent = true;
 				this.jsonTemp = null;
@@ -195,6 +218,7 @@ class RemoteEngine extends RemoteBase {
 			else if(data.t === 'askrm'){
 				let namespace = data.nm;
 				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+				if(clazz == null) return; // This node dont have remote module
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
 			else if(data.t === 'addrm')
@@ -210,8 +234,6 @@ class RemoteEngine extends RemoteBase {
 					if(iface.id !== data.f)
 						throw new Error("Old node id was different");
 
-					let instance = this.instance;
-
 					// This may need to be changed if the ID was being used for reactivity
 					delete instance.iface[iface.id];
 					instance.iface[data.to] = iface;
@@ -223,7 +245,7 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'jsonim'){
 				this._skipEvent = true;
-				await this.instance.importJSON(data.raw, {appendMode: data.app});
+				await instance.importJSON(data.raw, {appendMode: data.app});
 				this._skipEvent = false;
 			}
 			else if(data.t === 'pdc'){

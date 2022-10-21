@@ -31,11 +31,14 @@ class RemoteControl extends RemoteBase {
 			if(this._skipEvent) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 			let iER = cable.isRoute; // isEdgeRoute
+			let fid = getFunctionId(cable.output.iface);
+			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
 			this.saveSketchToRemote();
 			this._onSyncOut({
 				w:'c',
 				ci,
+				fid,
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: iER ? 'route' : cable.input.source, n: cable.input.name || ''},
 				out:{i: ifaceList.indexOf(cable.output.iface), s: iER ? 'route' : cable.output.source, n: cable.output.name || ''},
 				t:'c'
@@ -46,12 +49,15 @@ class RemoteControl extends RemoteBase {
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
+			let fid = getFunctionId(cable.output.iface);
+			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
 			cable._evDisconnected = true;
 			this.saveSketchToRemote();
 			this._onSyncOut({
 				w:'c',
 				ci,
+				fid,
 				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
 				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
 				t:'d'
@@ -62,10 +68,13 @@ class RemoteControl extends RemoteBase {
 		instance.on('node.created', evNodeCreated = ev => {
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
+			let fid = getFunctionId(ev.iface);
+			let ifaceList = ev.iface.node.instance.ifaceList;
 
 			if(this.isSketch){
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
 					data: ev.iface.data,
+					fid,
 					nm: ev.iface.namespace,
 					x: ev.iface.x,
 					y: ev.iface.y,
@@ -73,6 +82,7 @@ class RemoteControl extends RemoteBase {
 			}
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
 				data: ev.iface.data,
+				fid,
 				nm: ev.iface.namespace,
 			});
 		});
@@ -81,14 +91,20 @@ class RemoteControl extends RemoteBase {
 		instance.on('node.delete', evNodeDelete = ev => {
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
-			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'d'})
+			let ifaceList = ev.iface.node.instance.ifaceList;
+
+			let fid = getFunctionId(ev.iface);
+			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), t:'d'})
 		});
 
 		let evNodeSync;
 		instance.on('_node.sync', evNodeSync = ev => {
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
-			this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
+			let ifaceList = ev.iface.node.instance.ifaceList;
+
+			let fid = getFunctionId(ev.iface);
+			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
 		});
 
 		let evModuleDelete;
@@ -101,44 +117,72 @@ class RemoteControl extends RemoteBase {
 		instance.on('node.id.changed', nodeIDChanged = ({ iface, from, to }) => {
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
+			let ifaceList = iface.node.instance.ifaceList;
 
 			let i = ifaceList.indexOf(iface);
-			this._onSyncOut({w:'ins', t:'nidc', i, f:from, to:to});
+			let fid = getFunctionId(iface);
+			this._onSyncOut({w:'ins', t:'nidc', fid, i, f:from, to:to});
 		});
 
 		let portSplit;
 		instance.on('_port.split', portSplit = ({ port }) => {
 			if(this._skipEvent) return;
+			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
-			this._onSyncOut({w:'p', t:'s', i, ps: port.source, n: port.name});
+			let fid = getFunctionId(port.iface);
+			this._onSyncOut({w:'p', t:'s', fid, i, ps: port.source, n: port.name});
 		});
 
 		let portUnsplit;
 		instance.on('_port.unsplit', portUnsplit = ({ port }) => {
 			if(this._skipEvent) return;
+			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
-			this._onSyncOut({w:'p', t:'uns', i, ps: port.source, n: port.name});
+			let fid = getFunctionId(port.iface);
+			this._onSyncOut({w:'p', t:'uns', fid, i, ps: port.source, n: port.name});
 		});
 
 		let portDefaultChanged;
 		instance.on('port.default.changed', portDefaultChanged = ({ port }) => {
 			if(this._skipEvent) return;
+			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
-			this._onSyncOut({w:'ins', t:'pdc', i, k: port.name, v: port.default});
+			let fid = getFunctionId(port.iface);
+			this._onSyncOut({w:'ins', t:'pdc', fid, i, k: port.name, v: port.default});
 		});
 
 		let portResyncAllow;
 		instance.on('_port.resync.allow', portResyncAllow = ({ port }) => {
 			if(this._skipEvent) return;
+			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
-			this._onSyncOut({w:'ins', t:'prsc', i, k: port.name, v: true});
+			let fid = getFunctionId(port.iface);
+			this._onSyncOut({w:'ins', t:'prsc', fid, i, k: port.name, v: true});
 		});
 
 		let portResyncDisallow;
 		instance.on('_port.resync.disallow', portResyncDisallow = ({ port }) => {
 			if(this._skipEvent) return;
+			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
-			this._onSyncOut({w:'ins', t:'prsc', i, k: port.name, v: false});
+			let fid = getFunctionId(port.iface);
+			this._onSyncOut({w:'ins', t:'prsc', fid, i, k: port.name, v: false});
+		});
+
+		let insVariableNew;
+		instance.on('variable.new', insVariableNew = (ev) => {
+			if(this._skipEvent) return;
+			if(ev.funcInstance != null){
+				let funcId = ev.funcInstance.id;
+				this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ev.title, scp: ev.scope ?? ev._scope, fid: funcId});
+				return;
+			}
+			this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ev.title, scp: ev._scope});
+		});
+		let insFunctionNew;
+		instance.on('function.new', insFunctionNew = (ev) => {
+			if(this._skipEvent) return;
+			this._onSyncOut({w:'ins', t:'cfn', id: ev.id, ti: ev.title, dsc: ev.description});
 		});
 
 		this.destroy = () => {
@@ -156,6 +200,8 @@ class RemoteControl extends RemoteBase {
 			instance.off('port.default.changed', portDefaultChanged);
 			instance.off('_port.resync.allow', portResyncAllow);
 			instance.off('_port.resync.disallow', portResyncDisallow);
+			instance.off('variable.new', insVariableNew);
+			instance.off('function.new', insFunctionNew);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
@@ -209,26 +255,43 @@ class RemoteControl extends RemoteBase {
 
 		if(data.w === 'skc') return data;
 
-		let { ifaceList } = this.instance;
+		let instance = this.instance;
+		if(data.fid != null){
+			instance = this.instance.functions[data.fid].used[0]?.bpInstance;
+			if(instance == null)
+				return this._resync('FunctionNode');
+		}
+
+		let { ifaceList } = instance;
 
 		if(data.w === 'c'){ // cable
 			let {inp, out} = data;
 
 			if(this.isSketch && data.t === 'c'){ // connect
 				let inputPort, outputPort;
+				let ifaceInput = ifaceList[inp.i];
+				let ifaceOutput = ifaceList[out.i];
 				if(inp.s === 'route'){
-					inputPort = ifaceList[inp.i].node.routes;
-					outputPort = ifaceList[out.i].node.routes;
+					inputPort = ifaceInput.node.routes;
+					outputPort = ifaceOutput.node.routes;
 				}
 				else{
-					inputPort = ifaceList[inp.i][inp.s][inp.n];
-					outputPort = ifaceList[out.i][out.s][out.n];
+					inputPort = ifaceInput[inp.s][inp.n];
+					outputPort = ifaceOutput[out.s][out.n];
+				}
+
+				if(outputPort == null && ifaceOutput.namespace === "BP/Fn/Input"){
+					outputPort = ifaceOutput.addPort(inputPort);
+				}
+
+				if(inputPort == null && ifaceInput.namespace === "BP/Fn/Output"){
+					inputPort = ifaceInput.addPort(outputPort);
 				}
 
 				this._skipEvent = true;
 
 				if(data.ci !== -1){
-					let cable = this.instance.scope('cables').list[data.ci];
+					let cable = instance.scope('cables').list[data.ci];
 
 					if(cable == null)
 						return this._resync('Cable');
@@ -237,7 +300,10 @@ class RemoteControl extends RemoteBase {
 						outputPort.connectCable(cable);
 					else inputPort.connectCable(cable);
 				}
-				else inputPort.connectPort(outputPort);
+				else{
+					if(outputPort) // if function input
+					inputPort.connectPort(outputPort);
+				}
 
 				this._skipEvent = false;
 				return;
@@ -295,12 +361,13 @@ class RemoteControl extends RemoteBase {
 						return this._resync('Node');
 
 					let namespace = data.nm;
-					let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
-					if(clazz == null)
-						await this._askRemoteModule(namespace);
+					if(!namespace.startsWith("BPI/F/")){
+						let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+						if(clazz == null)
+							await this._askRemoteModule(namespace);
+					}
 
-					let newIface = this.instance.createNode(data.nm, data);
-
+					let newIface = instance.createNode(data.nm, data);
 					if(ifaceList.indexOf(newIface) !== data.i)
 						return this._resync('Node');
 				}
@@ -309,7 +376,7 @@ class RemoteControl extends RemoteBase {
 					if(iface == null)
 						return this._resync('Node');
 
-					this.instance.deleteNode(iface);
+					instance.deleteNode(iface);
 				}
 			} finally {
 				this._skipEvent = false;
@@ -320,7 +387,7 @@ class RemoteControl extends RemoteBase {
 				this._skipEvent = true;
 
 				if(data.d != null)
-					await this.instance.importJSON(data.d);
+					await instance.importJSON(data.d);
 				else
 					this.emit('empty.json.import');
 
@@ -329,12 +396,13 @@ class RemoteControl extends RemoteBase {
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
-				this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON({
+				this._onSyncOut({w:'ins', t:'ci', d: instance.exportJSON({
 					environment: false
 				})});
 			else if(data.t === 'askrm'){
 				let namespace = data.nm;
 				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+				if(clazz == null) return; // This node dont have remote module
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
 			else if(data.t === 'addrm')
@@ -350,8 +418,6 @@ class RemoteControl extends RemoteBase {
 					if(iface.id !== data.f)
 						throw new Error("Old node id was different");
 
-					let instance = this.instance;
-
 					// This may need to be changed if the ID was being used for reactivity
 					delete instance.iface[iface.id];
 					instance.iface[data.to] = iface;
@@ -363,7 +429,7 @@ class RemoteControl extends RemoteBase {
 			}
 			else if(data.t === 'jsonim'){
 				this._skipEvent = true;
-				await this.instance.importJSON(data.raw, {appendMode: data.app});
+				await instance.importJSON(data.raw, {appendMode: data.app});
 				this._skipEvent = false;
 			}
 			else if(data.t === 'pdc'){
