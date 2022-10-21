@@ -365,7 +365,7 @@ class RemoteSketch extends RemoteControl {
 
 					let evTemp = {
 						stopPropagation(){}, preventDefault(){},
-						target: iface.$el[0],
+						target: iface.$el?.[0],
 						movementX: mx,
 						movementY: my
 					};
@@ -404,7 +404,7 @@ class RemoteSketch extends RemoteControl {
 
 					let evTemp = {
 						stopPropagation(){}, preventDefault(){},
-						target: cables.$el[0],
+						target: cables.$el?.[0],
 						movementX: mx,
 						movementY: my
 					};
