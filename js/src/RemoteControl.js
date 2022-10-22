@@ -405,6 +405,9 @@ class RemoteControl extends RemoteBase {
 				if(clazz == null) return; // This node dont have remote module
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
+			else if(data.t === 'askfns'){ // ask function structure
+				this._onSyncOut({w:'ins', t:'sfns', d: JSON.stringify(instance.functions[data.fid].structure)});
+			}
 			else if(data.t === 'addrm')
 				this._answeredRemoteModule(data.nm, data.d);
 			else if(data.t === 'nidc'){ // node id changed

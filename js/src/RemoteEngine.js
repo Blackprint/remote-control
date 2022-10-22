@@ -53,6 +53,14 @@ class RemoteEngine extends RemoteBase {
 			this._onSyncOut({w:'err', d: ev.data})
 		});
 
+		let _fnStructureUpdate;
+		instance.on('_fn.structure.update', _fnStructureUpdate = ev => {
+			if(this._skipEvent) return;
+
+			// ask function structure
+			this._onSyncOut({w:'ins', t: 'askfns', fid: getFunctionId(ev).node._funcInstance.id });
+		});
+
 		// instance.on('cable.connecting', cable => {});
 		// instance.on('cable.cancel', cable => {});
 		// instance.on('port.output.call', cable => {});
@@ -62,6 +70,7 @@ class RemoteEngine extends RemoteBase {
 			instance.off('cable.disconnect', evCableDisconnect);
 			instance.off('_flowEvent', evFlowEvent);
 			instance.off('_node.sync', evNodeSync);
+			instance.off('_fn.structure.update', _fnStructureUpdate);
 			instance.off('error', evError);
 
 			this.onSyncIn = ()=>{};
@@ -210,6 +219,9 @@ class RemoteEngine extends RemoteBase {
 			else if(data.t === 'ssk'){ // save sketch json
 				this.jsonTemp = data.d;
 				this.jsonSyncTime = Date.now();
+			}
+			else if(data.t === 'sfns'){ // sync function structure
+				this.instance.functions[data.fid].structure = JSON.parse(data.d);
 			}
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
