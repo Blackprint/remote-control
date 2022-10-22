@@ -25,7 +25,7 @@ class RemoteEngine extends RemoteBase {
 		});
 
 		let evFlowEvent;
-		instance.on('_flowEvent', evFlowEvent = cable => {
+		instance.on('_flowEvent', evFlowEvent = ({ cable }) => {
 			if(this._skipEvent && !this._isImporting) return;
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
@@ -58,7 +58,7 @@ class RemoteEngine extends RemoteBase {
 			if(this._skipEvent) return;
 
 			// ask function structure
-			this._onSyncOut({w:'ins', t: 'askfns', fid: getFunctionId(ev).node._funcInstance.id });
+			this._onSyncOut({w:'ins', t: 'askfns', fid: ev.bpFunction.id });
 		});
 
 		// instance.on('cable.connecting', cable => {});
@@ -115,12 +115,22 @@ class RemoteEngine extends RemoteBase {
 					outputPort = ifaceOutput[out.s][out.n];
 				}
 
-				if(outputPort == null && ifaceOutput.namespace === "BP/Fn/Input"){
-					outputPort = ifaceOutput.addPort(inputPort);
+				if(outputPort == null){
+					if(ifaceOutput.namespace === "BP/Fn/Input")
+						outputPort = ifaceOutput.addPort(inputPort);
+					else if(ifaceOutput.namespace === "BP/Var/Get"){
+						ifaceOutput.useType(inputPort);
+						outputPort = ifaceOutput.output.Val;
+					}
 				}
 
-				if(inputPort == null && ifaceInput.namespace === "BP/Fn/Output"){
-					inputPort = ifaceInput.addPort(outputPort);
+				if(inputPort == null){
+					if(ifaceInput.namespace === "BP/Fn/Output")
+						inputPort = ifaceInput.addPort(outputPort);
+					else if(ifaceInput.namespace === "BP/Var/Set"){
+						ifaceInput.useType(outputPort);
+						inputPort = ifaceInput.input.Val;
+					}
 				}
 
 				inputPort.connectPort(outputPort);

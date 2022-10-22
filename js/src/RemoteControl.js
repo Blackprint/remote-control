@@ -280,12 +280,22 @@ class RemoteControl extends RemoteBase {
 					outputPort = ifaceOutput[out.s][out.n];
 				}
 
-				if(outputPort == null && ifaceOutput.namespace === "BP/Fn/Input"){
-					outputPort = ifaceOutput.addPort(inputPort);
+				if(outputPort == null){
+					if(ifaceOutput.namespace === "BP/Fn/Input")
+						outputPort = ifaceOutput.addPort(inputPort);
+					else if(ifaceOutput.namespace === "BP/Var/Get"){
+						ifaceOutput.useType(inputPort);
+						outputPort = ifaceOutput.output.Val;
+					}
 				}
 
-				if(inputPort == null && ifaceInput.namespace === "BP/Fn/Output"){
-					inputPort = ifaceInput.addPort(outputPort);
+				if(inputPort == null){
+					if(ifaceInput.namespace === "BP/Fn/Output")
+						inputPort = ifaceInput.addPort(outputPort);
+					else if(ifaceInput.namespace === "BP/Var/Set"){
+						ifaceInput.useType(outputPort);
+						inputPort = ifaceInput.input.Val;
+					}
 				}
 
 				this._skipEvent = true;
@@ -406,7 +416,7 @@ class RemoteControl extends RemoteBase {
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
 			else if(data.t === 'askfns'){ // ask function structure
-				this._onSyncOut({w:'ins', t:'sfns', d: JSON.stringify(instance.functions[data.fid].structure)});
+				this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: JSON.stringify(instance.functions[data.fid].structure)});
 			}
 			else if(data.t === 'addrm')
 				this._answeredRemoteModule(data.nm, data.d);
