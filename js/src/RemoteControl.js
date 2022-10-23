@@ -185,6 +185,15 @@ class RemoteControl extends RemoteBase {
 			this._onSyncOut({w:'ins', t:'cfn', id: ev.id, ti: ev.title, dsc: ev.description});
 		});
 
+		let fnRenamePort;
+		instance.on('_fn.rename.port', fnRenamePort = ({ iface, which, fromName, toName }) => {
+			if(this._skipEvent) return;
+			let ifaceList = iface.node.instance.ifaceList;
+			let fid = getFunctionId(iface);
+			let i = ifaceList.indexOf(iface);
+			this._onSyncOut({w:'nd', t:'fnrnp', i, fid, wh: which, fnm: fromName, tnm: toName});
+		});
+
 		this.destroy = () => {
 			instance.off('cable.connect', evCableConnect);
 			instance.off('cable.disconnect', evCableDisconnect);
@@ -202,6 +211,7 @@ class RemoteControl extends RemoteBase {
 			instance.off('_port.resync.disallow', portResyncDisallow);
 			instance.off('variable.new', insVariableNew);
 			instance.off('function.new', insFunctionNew);
+			instance.off('_fn.rename.port', fnRenamePort);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
@@ -365,7 +375,6 @@ class RemoteControl extends RemoteBase {
 
 					node._syncronizing = false;
 				}
-
 				else if(data.t === 'c'){ // created
 					if(iface != null) // The index mustn't be occupied by other iface
 						return this._resync('Node');
@@ -381,12 +390,14 @@ class RemoteControl extends RemoteBase {
 					if(ifaceList.indexOf(newIface) !== data.i)
 						return this._resync('Node');
 				}
-
 				else if(data.t === 'd'){ // deleted
 					if(iface == null)
 						return this._resync('Node');
 
 					instance.deleteNode(iface);
+				}
+				else if(data.t === 'fnrnp'){ // function rename node port
+					iface.renamePort(data.wh, data.fnm, data.tnm);
 				}
 			} finally {
 				this._skipEvent = false;

@@ -199,6 +199,9 @@ class RemoteEngine extends RemoteBase {
 				if(iface == null) return this._resync('Node');
 				instance.deleteNode(iface);
 			}
+			else if(data.t === 'fnrnp'){ // function rename node port
+				iface.renamePort(data.wh, data.fnm, data.tnm);
+			}
 		}
 		else if(data.w === 'ins'){ // instance
 			if(data.t === 'c'){ // clean nodes
