@@ -6,10 +6,11 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 
 	// "onSyncOut" function need to be replaced and the data need to be send to remote client
 	onSyncOut(data){}
-	_onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
+	_onSyncOut(data){ this.onSyncOut(data) }
+	// _onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 
 	/* Known vulnerability, but currently unsolveable:
-		- Blackprint.Environment data can be passed thru syncOut, we can censor the data but if the data get manipulated before being send then it will more difficult to detect the data that should be censored, the current solution is just only use this remote feature with your trusted friend or just use it in secure environment that only you who can access it. We can also fully block all data sync to avoid this vulnerability, so we will need permission based system
+		- Blackprint.Environment data can be passed thru syncOut, we can censor the data but if the data get manipulated before being send then it will more difficult to detect the data that should be censored, the current solution is just only use this remote feature with your trusted friend or just use it in secure environment that only you who can access it. We can also fully block all data sync to avoid this vulnerability, so we will need permission based system. I also considered to use ruled environment node to avoid unexpected node connection to untrusted node/data flow
 	*/
 
 	__resync = false;
@@ -148,7 +149,8 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	}
 
 	async onSyncIn(data){
-		data = JSON.parse(data);
+		// data = JSON.parse(data);
+		this.emit('_syncIn', data);
 
 		let instance = this.instance;
 		if(data.fid != null){

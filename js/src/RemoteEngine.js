@@ -234,7 +234,8 @@ class RemoteEngine extends RemoteBase {
 				this.jsonSyncTime = Date.now();
 			}
 			else if(data.t === 'sfns'){ // sync function structure
-				this.instance.functions[data.fid].structure = JSON.parse(data.d);
+				this.instance.functions[data.fid].structure = data.d;
+				// this.instance.functions[data.fid].structure = JSON.parse(data.d);
 			}
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
