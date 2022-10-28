@@ -6,9 +6,9 @@ function initContainer(instance) {
 	// This must be template only, don't insert dynamic data with ${...}
 	spaceEl.querySelector('sf-m[name="container"]').insertAdjacentHTML('beforeEnd', `<sf-m name="remote-sketch">
 		<div>
-			<div class="cursor" sf-each="val in remotes" style="transform: translate3d({{ val.x }}px, {{ val.y }}px, 0px)">
+			<div class="cursor" user-id="{{ val.uid }}" sf-each="val in remotes" style="transform: translate3d({{ val.x }}px, {{ val.y }}px, 0px)">
 				<i class="fa fa-mouse-pointer"></i>
-				<span>{{ val.uid }}</span>
+				<span>{{ val.name || val.uid }}</span>
 			</div>
 		</div>
 		<div>
@@ -30,6 +30,10 @@ if(globalThis.sf != null){
 				Blackprint.space.model('remote-sketch', function(My){
 					My.remotes = [];
 					My.remoteSelects = {};
+
+					My.init = function(){
+						Blackprint.emit('_remoteSketchScope', {scope: My});
+					}
 				});
 			}
 		}, 200);
