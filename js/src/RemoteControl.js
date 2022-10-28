@@ -71,9 +71,12 @@ class RemoteControl extends RemoteBase {
 			let fid = getFunctionId(ev.iface);
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
+			// Use exportData if exist, or convert to string first then parse it (to also trigger .toJSON if exist)
+			let ifaceData = ev.iface.exportData?.() || JSON.parse(JSON.stringify(ev.iface.data));
+
 			if(this.isSketch){
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
-					data: ev.iface.data,
+					data: ifaceData,
 					fid,
 					nm: ev.iface.namespace,
 					x: ev.iface.x,
@@ -81,7 +84,7 @@ class RemoteControl extends RemoteBase {
 				});
 			}
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
-				data: ev.iface.data,
+				data: ifaceData,
 				fid,
 				nm: ev.iface.namespace,
 			});
@@ -127,6 +130,7 @@ class RemoteControl extends RemoteBase {
 		let portSplit;
 		instance.on('_port.split', portSplit = ({ port }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let fid = getFunctionId(port.iface);
@@ -136,6 +140,7 @@ class RemoteControl extends RemoteBase {
 		let portUnsplit;
 		instance.on('_port.unsplit', portUnsplit = ({ port }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let fid = getFunctionId(port.iface);
@@ -145,6 +150,7 @@ class RemoteControl extends RemoteBase {
 		let portDefaultChanged;
 		instance.on('port.default.changed', portDefaultChanged = ({ port }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let fid = getFunctionId(port.iface);
@@ -154,6 +160,7 @@ class RemoteControl extends RemoteBase {
 		let portResyncAllow;
 		instance.on('_port.resync.allow', portResyncAllow = ({ port }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let fid = getFunctionId(port.iface);
@@ -163,6 +170,7 @@ class RemoteControl extends RemoteBase {
 		let portResyncDisallow;
 		instance.on('_port.resync.disallow', portResyncDisallow = ({ port }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let fid = getFunctionId(port.iface);
@@ -172,6 +180,7 @@ class RemoteControl extends RemoteBase {
 		let insVariableNew;
 		instance.on('variable.new', insVariableNew = (ev) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			if(ev.funcInstance != null){
 				let funcId = ev.funcInstance.id;
 				this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ev.title, scp: ev.scope ?? ev._scope, fid: funcId});
@@ -182,12 +191,14 @@ class RemoteControl extends RemoteBase {
 		let insFunctionNew;
 		instance.on('function.new', insFunctionNew = (ev) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'cfn', id: ev.id, ti: ev.title, dsc: ev.description});
 		});
 
 		let fnRenamePort;
 		instance.on('_fn.rename.port', fnRenamePort = ({ iface, which, fromName, toName }) => {
 			if(this._skipEvent) return;
+			this.saveSketchToRemote();
 			let ifaceList = iface.node.instance.ifaceList;
 			let fid = getFunctionId(iface);
 			let i = ifaceList.indexOf(iface);
@@ -220,6 +231,7 @@ class RemoteControl extends RemoteBase {
 
 	async sendSketchToRemote(){
 		this._onSyncOut({w:'ins', t:'ci', d: this.instance.exportJSON({
+			toRawObject: true,
 			environment: false
 		})});
 	}
@@ -233,6 +245,7 @@ class RemoteControl extends RemoteBase {
 		this._saveSketchToRemote = setTimeout(()=> {
 			this.emit('remote-save.begin');
 			this._onSyncOut({w:'ins', t:'ssk', d: this.instance.exportJSON({
+				toRawObject: true,
 				environment: false
 			})});
 		}, this.saveWhenIdle);
@@ -418,6 +431,7 @@ class RemoteControl extends RemoteBase {
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
 				this._onSyncOut({w:'ins', t:'ci', d: instance.exportJSON({
+					toRawObject: true,
 					environment: false
 				})});
 			else if(data.t === 'askrm'){
