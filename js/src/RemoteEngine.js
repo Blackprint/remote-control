@@ -54,12 +54,12 @@ class RemoteEngine extends RemoteBase {
 		});
 
 		let _fnStructureUpdate;
-		instance.on('_fn.structure.update', _fnStructureUpdate = ev => {
-			if(this._skipEvent) return;
+		// instance.on('_fn.structure.update', _fnStructureUpdate = ev => {
+		// 	if(this._skipEvent) return;
 
 			// ask function structure
-			this._onSyncOut({w:'ins', t: 'askfns', fid: ev.bpFunction.id });
-		});
+			// this._onSyncOut({w:'ins', t: 'askfns', fid: ev.bpFunction.id });
+		// });
 
 		// instance.on('cable.connecting', cable => {});
 		// instance.on('cable.cancel', cable => {});
@@ -70,7 +70,7 @@ class RemoteEngine extends RemoteBase {
 			instance.off('cable.disconnect', evCableDisconnect);
 			instance.off('_flowEvent', evFlowEvent);
 			instance.off('_node.sync', evNodeSync);
-			instance.off('_fn.structure.update', _fnStructureUpdate);
+			// instance.off('_fn.structure.update', _fnStructureUpdate);
 			instance.off('error', evError);
 
 			this.onSyncIn = ()=>{};

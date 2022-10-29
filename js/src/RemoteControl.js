@@ -205,6 +205,25 @@ class RemoteControl extends RemoteBase {
 			this._onSyncOut({w:'nd', t:'fnrnp', i, fid, wh: which, fnm: fromName, tnm: toName});
 		});
 
+		// ToDo: change below to `_fn.structure.update` after the engine was updated
+		let saveFnStructureChanges, saveFnStructureChangesDebounce;
+		instance.on('cable.connect cable.disconnect node.created node.delete node.move node.id.changed port.default.changed _port.split _port.unsplit _port.resync.allow _port.resync.disallow', saveFnStructureChanges = (ev) => {
+			let funcInstance = ev.port?.iface.node.instance._funcMain?._funcInstance;
+			if(funcInstance == null) funcInstance = ev.iface?.node.instance._funcMain?._funcInstance;
+			if(funcInstance == null) funcInstance = ev.cable?.owner.iface.node.instance._funcMain?._funcInstance;
+			if(funcInstance == null) return;
+
+			clearTimeout(saveFnStructureChangesDebounce);
+			saveFnStructureChangesDebounce = setTimeout(() => {
+				this._onSyncOut({
+					w:'ins',
+					t:'sfns',
+					fid: funcInstance.id,
+					d: instance.functions[funcInstance.id].structure,
+				});
+			}, 1500);
+		});
+
 		this.destroy = () => {
 			instance.off('cable.connect', evCableConnect);
 			instance.off('cable.disconnect', evCableDisconnect);
