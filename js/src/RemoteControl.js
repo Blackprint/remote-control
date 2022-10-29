@@ -72,7 +72,7 @@ class RemoteControl extends RemoteBase {
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
 			// Use exportData if exist, or convert to string first then parse it (to also trigger .toJSON if exist)
-			let ifaceData = ev.iface.exportData?.() || JSON.parse(JSON.stringify(ev.iface.data));
+			let ifaceData = ev.iface.data != null && (ev.iface.exportData?.() || JSON.parse(JSON.stringify(ev.iface.data)));
 
 			if(this.isSketch){
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
@@ -101,8 +101,8 @@ class RemoteControl extends RemoteBase {
 		});
 
 		let evNodeSync;
-		instance.on('_node.sync', evNodeSync = ev => {
-			if(this._skipEvent) return;
+		instance.on('_node.sync', evNodeSync = ev => { // internal node data sync
+			// if(this._skipEvent) return;
 			this.saveSketchToRemote();
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
