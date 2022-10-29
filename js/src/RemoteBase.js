@@ -149,6 +149,8 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	}
 
 	async onSyncIn(data){
+		if(data.w === 'skc') return;
+
 		// data = JSON.parse(data);
 		this.emit('_syncIn', data);
 
