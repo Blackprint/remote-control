@@ -1,5 +1,6 @@
 Blackprint.Node.prototype.syncOut = function(id, data=''){
-	if(this.instance._remote == null || this._syncronizing || this.instance.syncDataOut === false)
+	let instance = this.instance._mainInstance || this.instance;
+	if(instance._remote == null || this._syncronizing || instance.syncDataOut === false)
 		return;
 
 	if(id.constructor !== String)
@@ -20,7 +21,7 @@ Blackprint.Node.prototype.syncOut = function(id, data=''){
 		this._syncWait = {};
 		setTimeout(()=> {
 			if(this._syncHasWait)
-				this.instance.emit('_node.sync', {
+				instance.emit('_node.sync', {
 					iface: this.iface,
 					data: clearPrivateField(this._syncWait)
 				});
@@ -30,7 +31,7 @@ Blackprint.Node.prototype.syncOut = function(id, data=''){
 		}, this.syncThrottle);
 	}
 
-	this.instance.emit('_node.sync', {iface: this.iface, data: clearPrivateField({ [id]: data })});
+	instance.emit('_node.sync', {iface: this.iface, data: clearPrivateField({ [id]: data })});
 }
 
 function clearPrivateField(obj){
