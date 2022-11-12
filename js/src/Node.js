@@ -1,6 +1,6 @@
 Blackprint.Node.prototype.syncOut = function(id, data=''){
 	let instance = this.instance._mainInstance || this.instance;
-	if(instance._remote == null || instance.syncDataOut === false)
+	if(instance._remote == null || this._syncronizing || instance.syncDataOut === false)
 		return;
 
 	if(id.constructor !== String)
