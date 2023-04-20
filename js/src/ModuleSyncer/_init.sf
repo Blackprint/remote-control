@@ -1,0 +1,160 @@
+## html
+<div class="node {{ type || '' }}" style="transform: translate3d({{ x }}px, {{ y }}px, 0px)">
+	<sf-template path="Blackprint/nodes/template/routes.sf"></sf-template>
+	<sf-template path="Blackprint/nodes/template/header.sf"></sf-template>
+
+	<div class="content">
+		<div class="container">
+			<div sf-each="val in _interfaces" style="display: {{ val.inline ? 'inline-block' : 'block' }}">
+       		{{@exec
+				if(val.type === 'text_in' || val.type === 'text_out')
+					{[ <textarea style="width: 99%" placeholder="{{ val.placeholder || '' }}" title="{{ val.tooltip || '' }}"></textarea> ]};
+				else if(val.type === 'picture_in' || val.type === 'picture_out')
+					{[ <img title="{{ val.tooltip || '' }}"></img> ]};
+				else if(val.type === 'file_in' && val.multiple)
+					{[ <input type="file" multiple title="{{ val.tooltip || '' }}"></input> ]};
+				else if(val.type === 'file_in' && !val.multiple)
+					{[ <input type="file" title="{{ val.tooltip || '' }}"></input> ]};
+				else if(val.type === 'file_out')
+					{[ <button title="{{ val.tooltip || '' }}">{{ val.text || 'Download' }}</button> ]};
+				else if(val.type === 'button_in')
+					{[ <button title="{{ val.tooltip || '' }}">{{ val.text || 'Button' }}</button> ]};
+				else throw new Error(`Type is not recognized: ${val.type}`);
+			}}
+			</div>
+		</div>
+		<div class="left-port">
+			<sf-template path="Blackprint/nodes/template/input-port.sf"></sf-template>
+		</div>
+
+		<div class="right-port">
+			<sf-template path="Blackprint/nodes/template/output-port.sf"></sf-template>
+		</div>
+	</div>
+
+	<sf-template path="Blackprint/nodes/template/other.sf"></sf-template>
+</div>
+
+## scss-global
+sf-space[blackprint] bpic-bpremote-modulesyncer .node {
+	.container {
+		text-align: center;
+	}
+	textarea {
+		margin: 0px;
+	}
+	button {
+		background: #0000008c;
+		border: 2px solid #ffffff6b;
+		margin: 3px;
+		padding: 2px 8px;
+		border-radius: 50px;
+		outline: none;
+		color: white;
+	}
+	img{
+		width: 100%;
+		height: 100%;
+		max-width: 500px;
+		max-height: 500px;
+		text-align: center;
+	}
+}
+
+## js-global
+Blackprint.Sketch.registerInterface("BPIC/BPRemote/ModuleSyncer", {
+	template: #this.path,
+}, class extends Blackprint._IModuleSyncer {
+	constructor(node){
+		super(node);
+		this._interfaces = {};
+
+		// text_out, text_in, picture_out, picture_in, file_out, file_in, button_in
+		this.interfaceSync = [
+			{type: "text_out", id: "log", placeholder: "Output log", tooltip: "aaa"},
+			{type: "text_in", id: "input", placeholder: "Type text here..."},
+			{type: "picture_out", id: "pic_out", tooltip: "Picture preview"},
+			{type: "picture_in", id: "pic_in", tooltip: "Picture input"},
+			{type: "file_in", id: "file_in", tooltip: "File input"},
+			{type: "file_out", id: "file_out", tooltip: "File download", inline: true},
+			{type: "button_in", id: "button_in", tooltip: "Button input", inline: true},
+		];
+	}
+	init(){
+		let sync = this.interfaceSync;
+		let _interfaces = this._interfaces;
+
+		for (let i=0; i < sync.length; i++) {
+			let temp = sync[i];
+			if(!temp.id) throw new Error("Every 'interfaceSync' require an 'id', but one of the interface haven't been specified yet");
+
+			sf.Obj.set(_interfaces, temp.id, temp);
+
+			if(temp.type === 'text_in'){
+				_interfaces.$el('textarea', temp.id).on('input', ev => {
+					this.syncOut(temp.id, ev.target.value);
+				});
+			}
+			else if(temp.type === 'picture_in'){
+				let el = _interfaces.$el('img', temp.id);
+				el.on('dragover', ev => ev.preventDefault());
+				el.on('drop', ev => {
+					ev.preventDefault();
+
+					let file = ev.dataTransfer.files[0];
+					if(!(file instanceof File))
+						throw new Error("Dropped item in this element was not a file");
+
+					this.syncOut(temp.id, file);
+				});
+			}
+			else if(temp.type === 'file_in'){
+				_interfaces.$el('input', temp.id).on('input', ev => {
+					this.syncOut(temp.id, ev.target.files[0]);
+				});
+			}
+			else if(temp.type === 'file_out'){
+				let el = _interfaces.$el('button', temp.id);
+				el.on('click', ev => {
+					if(el.fileData == null)
+						throw new Error("No downloadable content");
+
+					let blob = new Blob([el.fileData], { type: 'application/octet-stream' });
+
+					let temp = document.createElement('a');
+					temp.href = URL.createObjectURL(blob);
+					temp.download = temp.filename || 'file';
+					temp.style = 'display:none';
+					document.body.appendChild(temp);
+					temp.click();
+					temp.remove();
+
+					setTimeout(()=> URL.revokeObjectURL(url), 10000);
+				});
+			}
+			else if(temp.type === 'button_in'){
+				_interfaces.$el('button', temp.id)
+					.on('pointerdown', ev => {
+						this.syncOut(temp.id, true);
+					})
+					.on('pointerup', ev => {
+						this.syncOut(temp.id, false);
+					});
+			}
+		}
+	}
+	syncIn(id, data){
+		let item = this._interfaces[id];
+
+		if(item == null)
+			throw new Error(`InterfaceSync for id "${id}" was not found in "${this.title}" (${this.namespace})`);
+
+		if(item.type === 'text_out')
+			this._interfaces.$el('textarea', id).value(data);
+		else if(item.type === 'picture_out')
+			this._interfaces.$el('img', id).attr('src', data);
+		else if(item.type === 'file_out')
+			this._interfaces.$el('button', id)[0].fileData = data;
+	}
+	syncOut(id, data){ this.node.syncOut(id, data) }
+});

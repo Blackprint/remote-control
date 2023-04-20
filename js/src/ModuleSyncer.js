@@ -4,6 +4,8 @@ let nativeTypeList = new Map([
 	[String, {name: 'String'}],
 	[Number, {name: 'Number'}],
 	[Boolean, {name: 'Boolean'}],
+	[Object, {name: 'Object'}],
+	[Array, {name: 'Array'}],
 	[Blackprint.Types.Any, {name: 'Any'}],
 	[Blackprint.Types.Route, {name: 'Route'}],
 	[Blackprint.Types.Slot, {name: 'Slot'}],
@@ -123,6 +125,7 @@ let ModuleSyncer = {
 					if(temp.type === 'Boolean') type = Boolean;
 					else if(temp.type === 'String') type = String;
 					else if(temp.type === 'Number') type = Number;
+					else if(temp.type === 'Object') type = Object;
 					else if(temp.type === 'Any') type = Blackprint.Types.Any;
 					else if(temp.type === 'Route') type = Blackprint.Types.Route;
 					else if(temp.type === 'Slot') type = Blackprint.Types.Slot;
@@ -135,7 +138,7 @@ let ModuleSyncer = {
 						if(feature === 1) type = portTypes.ArrayOf(type);
 						// else if(feature === 2) type = portTypes.Default(type);
 						else if(feature === 3) type = portTypes.StructOf(type);
-						else if(feature === 4) type = portTypes.Trigger(type, () => {});
+						else if(feature === 4) type = portTypes.Trigger(type, ()=>{});
 						else if(feature === 5) {
 							let typeList = temp.type.map(val => {
 								let type = Blackprint.Port.VirtualType(Object, val.name, typeContext)
@@ -159,21 +162,29 @@ let ModuleSyncer = {
 
 				constructor(instance){
 					super(instance);
-					this.setInterface();
+					this.setInterface("BPIC/BPRemote/ModuleSyncer");
 					this.iface.title = title;
 					this.iface.description = namespace;
+					this.iface.extension = node.extension;
 				}
 				update(){}
+				syncIn(id, data){ this.iface.syncIn(id, data) }
 			});
 		}
 	}
 }
+
+Blackprint.registerInterface("BPIC/BPRemote/ModuleSyncer",
+Blackprint._IModuleSyncer = class extends Blackprint.Interface {
+	syncIn(){} // Do nothing
+});
 
 window.ModuleSyncer = ModuleSyncer;
 
 /**
  * Namepace: {
  *   type: "flow-control",
+ *   interfaceSync: [ {type: "text_out", id: "theId"} ],
  *   input: { name: {type: "String", feature: 0}, ... },
  *   output: { name: {type: "String", feature: 0}, ... },
  * }
