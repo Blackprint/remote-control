@@ -11,9 +11,18 @@ let nativeTypeList = new Map([
 	[Blackprint.Types.Slot, {name: 'Slot'}],
 ]);
 
-let ModuleSyncer = {
+let pako = window.pako;
+if(Blackprint.Environment.isNode){
+	let zlib = require('zlib');
+	pako = {
+		inflateRaw: zlib.inflateRawSync,
+		deflateRaw: zlib.deflateRawSync,
+	};
+}
+
+Blackprint.PuppetNode = {
 	// ToDo: port to PHP, Golang, and other programming languages
-	getRegisteredNodes(options={}){
+	async getRegisteredNodes(options={}){
 		let nodes = Blackprint.nodes;
 		let list = {};
 		let portTypes = Blackprint.Port;
@@ -87,6 +96,7 @@ let ModuleSyncer = {
 					}
 
 					temp.type = item.type;
+					temp.interfaceSync = item.interfaceSync;
 				}
 				else if(item.constructor === Object)
 					extract(item, `${namespace}${key}/`);
@@ -97,12 +107,12 @@ let ModuleSyncer = {
 		if(options.raw) return list;
 
 		list = JSON.stringify(list);
-		return pako.deflateRaw(list);
+		return await pako.deflateRaw(list);
 	},
 
 	// Can only be used on Browser with Blackprint Sketch
-	setRegisteredNodes(data){
-		let list = pako.inflateRaw(data, {to: 'string'});
+	async setRegisteredNodes(data){
+		let list = await pako.inflateRaw(data, {to: 'string'});
 		list = JSON.parse(list);
 
 		let nodes = Blackprint.nodes;
@@ -126,6 +136,7 @@ let ModuleSyncer = {
 					else if(temp.type === 'String') type = String;
 					else if(temp.type === 'Number') type = Number;
 					else if(temp.type === 'Object') type = Object;
+					else if(temp.type === 'Array') type = Array;
 					else if(temp.type === 'Any') type = Blackprint.Types.Any;
 					else if(temp.type === 'Route') type = Blackprint.Types.Route;
 					else if(temp.type === 'Slot') type = Blackprint.Types.Slot;
@@ -159,10 +170,11 @@ let ModuleSyncer = {
 				static input = ports.input;
 				static output = ports.output;
 				static type = node.type;
+				static interfaceSync = node.interfaceSync;
 
 				constructor(instance){
 					super(instance);
-					this.setInterface("BPIC/BPRemote/ModuleSyncer");
+					this.setInterface("BPIC/BPRemote/PuppetNode");
 					this.iface.title = title;
 					this.iface.description = namespace;
 					this.iface.extension = node.extension;
@@ -174,12 +186,10 @@ let ModuleSyncer = {
 	}
 }
 
-Blackprint.registerInterface("BPIC/BPRemote/ModuleSyncer",
-Blackprint._IModuleSyncer = class extends Blackprint.Interface {
+Blackprint.registerInterface("BPIC/BPRemote/PuppetNode",
+Blackprint._IPuppetNode = class extends Blackprint.Interface {
 	syncIn(){} // Do nothing
 });
-
-window.ModuleSyncer = ModuleSyncer;
 
 /**
  * Namepace: {
