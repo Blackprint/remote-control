@@ -413,7 +413,7 @@ class RemoteControl extends RemoteBase {
 
 					let namespace = data.nm;
 					if(!namespace.startsWith("BPI/F/")){
-						let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+						let clazz = Blackprint._utils.getDeepProperty(Blackprint.nodes, namespace.split('/'));
 						if(clazz == null)
 							await this._askRemoteModule(namespace);
 					}
@@ -455,7 +455,7 @@ class RemoteControl extends RemoteBase {
 				})});
 			else if(data.t === 'askrm'){
 				let namespace = data.nm;
-				let clazz = Blackprint._utils.deepProperty(Blackprint.nodes, namespace.split('/'));
+				let clazz = Blackprint._utils.getDeepProperty(Blackprint.nodes, namespace.split('/'));
 				if(clazz == null) return; // This node dont have remote module
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
