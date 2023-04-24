@@ -183,6 +183,10 @@ Blackprint.PuppetNode = {
 				syncIn(id, data){ this.iface.syncIn(id, data) }
 			});
 		}
+
+		// Remove external modules URL list
+		Blackprint.modulesURL = {};
+		Blackprint._modulesURL?.splice(0);
 	}
 }
 
