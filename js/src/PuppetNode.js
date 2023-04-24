@@ -15,8 +15,13 @@ let pako = window.pako;
 if(Blackprint.Environment.isNode){
 	let zlib = require('zlib');
 	pako = {
-		inflateRaw: zlib.inflateRawSync,
-		deflateRaw: zlib.deflateRawSync,
+		// inflateRaw: zlib.inflateRawSync,
+		deflateRaw: async (data) => await new Promise((resolve, reject)=> {
+			zlib.deflateRaw(data, {level: 9}, (err, val) => {
+				if(err) return reject(err);
+				resolve(val);
+			});
+		}),
 	};
 }
 
