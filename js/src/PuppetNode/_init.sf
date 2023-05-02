@@ -11,6 +11,14 @@
 					{[ <textarea style="width: 99%" placeholder="{{ val.placeholder || '' }}" title="{{ val.tooltip || '' }}"></textarea> ]};
 				else if(val.type === 'picture_in' || val.type === 'picture_out')
 					{[ <img title="{{ val.tooltip || '' }}"></img> ]};
+				else if(val.type === 'checkbox_in')
+					{[ <input type="checkbox" title="{{ val.tooltip || '' }}"></input> ]};
+				else if(val.type === 'led_out')
+					{[ <div class="led" title="{{ val.tooltip || '' }}"></div> ]};
+				else if(val.type === 'dropdown_in' && val.multiple)
+					{[ <select multiple title="{{ val.tooltip || '' }}"></select> ]};
+				else if(val.type === 'dropdown_in' && !val.multiple)
+					{[ <select title="{{ val.tooltip || '' }}"></select> ]};
 				else if(val.type === 'file_in' && val.multiple)
 					{[ <input type="file" multiple title="{{ val.tooltip || '' }}"></input> ]};
 				else if(val.type === 'file_in' && !val.multiple)
@@ -55,9 +63,18 @@ sf-space[blackprint] bpic-bpremote-PuppetNode .node {
 	img{
 		width: 100%;
 		height: 100%;
-		max-width: 500px;
-		max-height: 500px;
+		max-width: 250px;
+		max-height: 250px;
 		text-align: center;
+	}
+	.led {
+		background: gray;
+		margin: 5px;
+		height: 15px;
+		width: 15px;
+		border-radius: 15px;
+		&.inactive { background: #c93f3f; }
+		&.active { background: green; }
 	}
 }
 
@@ -75,6 +92,12 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			{type: "text_in", id: "input", placeholder: "Type text here..."},
 			{type: "picture_out", id: "pic_out", tooltip: "Picture preview"},
 			{type: "picture_in", id: "pic_in", tooltip: "Picture input"},
+			{type: "checkbox_in", id: "checkbox_in", tooltip: "Enable/disable"},
+			{type: "led_out", id: "led_out", tooltip: "Status indicator", inline: true},
+			{type: "dropdown_in", id: "dropdown_in", tooltip: "List selection", options: [
+				{id: 'aa', text: 'AA'},
+				{id: 'bb', text: 'BB'},
+			], multiple: false},
 			{type: "file_in", id: "file_in", tooltip: "File input"},
 			{type: "file_out", id: "file_out", tooltip: "File download", inline: true},
 			{type: "button_in", id: "button_in", tooltip: "Button input", inline: true}, */
@@ -105,43 +128,81 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 					if(!(file instanceof File))
 						throw new Error("Dropped item in this element was not a file");
 
-					this.syncOut(temp.id, file);
+					this._encodeFile(file).then(v => {
+						this.syncOut(temp.id, { url: 'data:image;base64,'+btoa(v) });
+					});
+
+					let FR = new FileReader();
+					FR.addEventListener("load", ev => el[0].src = ev.target.result); 
+					FR.readAsDataURL(file);
 				});
+			}
+			else if(temp.type === 'checkbox_in'){
+				_interfaces.$el('input', temp.id).on('input', ev => {
+					this.syncOut(temp.id, ev.target.checked);
+				});
+			}
+			else if(temp.type === 'dropdown_in'){
+				let el = _interfaces.$el('select', temp.id);
+				el.on('input', ev => {
+					this.syncOut(temp.id, {selected: [...ev.target.selectedOptions].map(v => v.value)});
+				});
+
+				let options = temp.options;
+				for (let i=0; i < options.length; i++) {
+					let item = options[i];
+					el.append(`<option value="${$.escapeText(item.id)}">${$.escapeText(item.text)}</option>`);
+				}
 			}
 			else if(temp.type === 'file_in'){
 				_interfaces.$el('input', temp.id).on('input', ev => {
-					this.syncOut(temp.id, ev.target.files[0]);
+					Promise.all([...ev.target.files].map(v => this._encodeFile(v))).then(v => {
+						this.syncOut(temp.id, { data: v });
+					});
 				});
 			}
 			else if(temp.type === 'file_out'){
 				let el = _interfaces.$el('button', temp.id);
 				el.on('click', ev => {
-					if(el.fileData == null)
+					let fileData = el[0].fileData;
+					if(fileData == null)
 						throw new Error("No downloadable content");
 
-					let blob = new Blob([el.fileData], { type: 'application/octet-stream' });
+					let blob = new Blob([fileData], { type: 'application/octet-stream' });
 
 					let temp = document.createElement('a');
 					temp.href = URL.createObjectURL(blob);
 					temp.download = temp.filename || 'file';
 					temp.style = 'display:none';
 					document.body.appendChild(temp);
+					temp.target = '_blank';
 					temp.click();
 					temp.remove();
 
-					setTimeout(()=> URL.revokeObjectURL(url), 10000);
+					setTimeout(()=> URL.revokeObjectURL(temp.href), 10000);
 				});
 			}
 			else if(temp.type === 'button_in'){
 				_interfaces.$el('button', temp.id)
 					.on('pointerdown', ev => {
-						this.syncOut(temp.id, true);
+						this.syncOut(temp.id, {press: true});
 					})
 					.on('pointerup', ev => {
-						this.syncOut(temp.id, false);
+						this.syncOut(temp.id, {press: false});
 					});
 			}
 		}
+	}
+	async _encodeFile(file){
+		file = await file.arrayBuffer();
+
+		let encoded = '';
+		let bytes = new Uint8Array(file);
+
+		for (let i = 0, n = bytes.byteLength; i < n; i++)
+			encoded += String.fromCharCode(bytes[i]);
+
+		return encoded;
 	}
 	syncIn(id, data){
 		let item = this._interfaces[id];
@@ -150,9 +211,51 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 		if(item.type === 'text_out')
 			this._interfaces.$el('textarea', id).val(data);
 		else if(item.type === 'picture_out')
-			this._interfaces.$el('img', id).attr('src', data);
-		else if(item.type === 'file_out')
-			this._interfaces.$el('button', id)[0].fileData = data;
+			this._interfaces.$el('img', id).attr('src', data.url);
+		else if(item.type === 'checkbox_in')
+			this._interfaces.$el('input', id)[0].checked = data.active;
+		else if(item.type === 'dropdown_in'){
+			if(data.type === 'list'){
+				let el = this._interfaces.$el('select', id);
+				el[0].textContent = '';
+
+				let options = data.options;
+				for (let i=0; i < options.length; i++) {
+					let item = options[i];
+					el.append(`<option value="${$.escapeText(item.id)}">${$.escapeText(item.text)}</option>`);
+				}
+			}
+			else if(data.type === 'selected'){
+				let el = this._interfaces.$el('select', id);
+				let list = el.find('option');
+				let index = -1;
+
+				for (let i=0; i < list.length; i++) {
+					if(list[i].value === data.id){
+						index = i;
+						break;
+					}
+				}
+
+				if(index === -1)
+					return console.error(`Id "${data.id}" was not found in dropdown "${id}" list on node "${this.iface.namespace}"`);
+
+				el[0].selectedIndex = index;
+			}
+		}
+		else if(item.type === 'led_out'){
+			let div = this._interfaces.$el('div', id);
+			div.removeClass(data.active ? 'inactive' : 'active');
+			div.addClass(data.active ? 'active' : 'inactive');
+		}
+		else if(item.type === 'file_out'){
+			let temp = data.data;
+			let bytes = new Uint8Array(temp.length);
+			for (var i = 0; i < temp.length; i++)
+				bytes[i] = temp.charCodeAt(i);
+
+			this._interfaces.$el('button', id)[0].fileData = bytes;
+		}
 	}
 	syncOut(id, data){ this.node.syncOut(id, data) }
 });
