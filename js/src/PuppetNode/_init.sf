@@ -4,13 +4,31 @@
 	<sf-template path="Blackprint/nodes/template/header.sf"></sf-template>
 
 	<div class="content">
+		<div class="left-port">
+			<sf-template path="Blackprint/nodes/template/input-port.sf"></sf-template>
+		</div>
+		<div class="right-port">
+			<sf-template path="Blackprint/nodes/template/output-port.sf"></sf-template>
+		</div>
+
+		<div class="section-split"></div>
+
 		<div class="container">
-			<div sf-each="val in _interfaces" style="display: {{ val.inline ? 'inline-block' : 'block' }}">
+			<div sf-each="val in _interfaces" class="{{ val.type }}" style="display: {{ val.inline ? 'inline-block' : 'block' }}">
        		{{@exec
+				if(val.label){
+					if(val.inline)
+						{[ <label>{{ val.label }} </label> ]};
+					else
+						{[ <label>{{ val.label }}: </label> ]};
+				}
+
 				if(val.type === 'text_in' || val.type === 'text_out')
 					{[ <textarea style="width: 99%" placeholder="{{ val.placeholder || '' }}" title="{{ val.tooltip || '' }}"></textarea> ]};
-				else if(val.type === 'picture_in' || val.type === 'picture_out')
-					{[ <img title="{{ val.tooltip || '' }}"></img> ]};
+				else if(val.type === 'picture_in')
+					{[ <div class="img"><div class="label">{{ val.placeholder || "Drag and drop picture here..." }}</div><img title="{{ val.tooltip || '' }}"></img></div> ]};
+				else if(val.type === 'picture_out')
+					{[ <div class="img"><div class="label">{{ val.placeholder || "Picture will be displayed here..." }}</div><img title="{{ val.tooltip || '' }}"></img></div> ]};
 				else if(val.type === 'checkbox_in')
 					{[ <input type="checkbox" title="{{ val.tooltip || '' }}"></input> ]};
 				else if(val.type === 'led_out')
@@ -31,13 +49,6 @@
 			}}
 			</div>
 		</div>
-		<div class="left-port">
-			<sf-template path="Blackprint/nodes/template/input-port.sf"></sf-template>
-		</div>
-
-		<div class="right-port">
-			<sf-template path="Blackprint/nodes/template/output-port.sf"></sf-template>
-		</div>
 	</div>
 
 	<sf-template path="Blackprint/nodes/template/other.sf"></sf-template>
@@ -47,6 +58,20 @@
 sf-space[blackprint] bpic-bpremote-PuppetNode .node {
 	.container {
 		text-align: center;
+		max-width: 400px;
+	}
+	.section-split{
+		width: 100%;
+		height: 1px;
+		padding-top: 7px;
+		border-bottom: 1px dashed white;
+		display: flex;
+	}
+	label {
+		margin: 5px 5px 2px 5px;
+		color: white;
+		display: inline-block;
+		font-size: 14px;
 	}
 	textarea {
 		margin: 0px;
@@ -60,21 +85,64 @@ sf-space[blackprint] bpic-bpremote-PuppetNode .node {
 		outline: none;
 		color: white;
 	}
+	input {
+		vertical-align: middle;
+	}
+	.img{
+		position: relative;
+		margin: 0 auto;
+		width: 250px;
+		min-height: 100px;
+		background: black;
+		border-radius: 10px;
+		overflow: hidden;
+		.label {
+			font-size: 8px;
+			text-align: center;
+			top: 5px;
+			position: absolute;
+			width: 100%;
+			color: gray;
+		}
+	}
 	img{
-		width: 100%;
 		height: 100%;
-		max-width: 250px;
+		max-width: 100%;
 		max-height: 250px;
 		text-align: center;
+		visibility: hidden;
+		position: relative;
+		vertical-align: -webkit-baseline-middle;
+		&[src]{
+			visibility: visible;
+		}
 	}
-	.led {
-		background: gray;
-		margin: 5px;
-		height: 15px;
-		width: 15px;
-		border-radius: 15px;
-		&.inactive { background: #c93f3f; }
-		&.active { background: green; }
+	.text_in, .text_out, .checkbox_in, .dropdown_in, .file_in {
+		text-align: left;
+	}
+	.checkbox_in, .dropdown_in, .file_in {
+		margin: 5px 0 5px 0;
+	}
+	.picture_in, .picture_out {
+		margin-bottom: 2px;
+	}
+	.picture_in, .picture_out, .file_out, .button_in {
+		label{
+			display: block;
+		}
+	}
+	.led_out {
+		margin: 0 3px;
+		.led {
+			background: gray;
+			margin: 5px auto;
+			height: 15px;
+			width: 15px;
+			border-radius: 15px;
+			text-align: center;
+			&.inactive { background: #c93f3f; }
+			&.active { background: green; }
+		}
 	}
 }
 
@@ -119,7 +187,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 				});
 			}
 			else if(temp.type === 'picture_in'){
-				let el = _interfaces.$el('img', temp.id);
+				let el = _interfaces.$el('.img', temp.id);
 				el.on('dragover', ev => ev.preventDefault());
 				el.on('drop', ev => {
 					ev.preventDefault();
@@ -133,7 +201,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 					});
 
 					let FR = new FileReader();
-					FR.addEventListener("load", ev => el[0].src = ev.target.result); 
+					FR.addEventListener("load", ev => el.find('img')[0].src = ev.target.result); 
 					FR.readAsDataURL(file);
 				});
 			}
