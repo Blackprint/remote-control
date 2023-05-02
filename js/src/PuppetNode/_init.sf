@@ -84,6 +84,10 @@ sf-space[blackprint] bpic-bpremote-PuppetNode .node {
 		border-radius: 50px;
 		outline: none;
 		color: white;
+		cursor: pointer;
+		&:hover{
+			background: #9191918c;
+		}
 	}
 	input {
 		vertical-align: middle;
