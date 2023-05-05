@@ -1,0 +1,15 @@
+[project]
+name = "BlackprintRC"
+version = "0.1.9"
+description = "Blackprint Engine remote control feature for Python"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 4 - Beta",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Blackprint/remote-control"
+"Bug Tracker" = "https://github.com/Blackprint/remote-control/issues"
