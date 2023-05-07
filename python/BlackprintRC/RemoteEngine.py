@@ -262,7 +262,7 @@ class RemoteEngine(RemoteBase):
 				iface.input[data['k']].default = data['v']
 
 				node = iface.node
-				node.update()
+				node.update(None)
 				node.routes.routeOut()
 			elif(data['t'] == 'prsc'):
 				iface = ifaceList[data['i']]
