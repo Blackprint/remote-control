@@ -11,7 +11,7 @@
 			<sf-template path="Blackprint/nodes/template/output-port.sf"></sf-template>
 		</div>
 
-		<div class="section-split"></div>
+		<div class="section-split" style="{{ interfaceSync.length ? '' : 'display: none' }}"></div>
 
 		<div class="container">
 			<div sf-each="val in _interfaces" class="{{ val.type }}" style="display: {{ val.inline ? 'inline-block' : 'block' }}">
