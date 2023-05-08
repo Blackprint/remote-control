@@ -15,9 +15,9 @@ let pako = window.pako;
 if(Blackprint.Environment.isNode){
 	let zlib = require('zlib');
 	pako = {
-		// inflateRaw: zlib.inflateRawSync,
-		deflateRaw: async (data) => await new Promise((resolve, reject)=> {
-			zlib.deflateRaw(data, {level: 9}, (err, val) => {
+		// inflate: zlib.inflateSync,
+		deflate: async (data) => await new Promise((resolve, reject)=> {
+			zlib.deflate(data, {level: 9}, (err, val) => {
 				if(err) return reject(err);
 				resolve(val);
 			});
@@ -112,12 +112,14 @@ Blackprint.PuppetNode = {
 		if(options.raw) return list;
 
 		list = JSON.stringify(list);
-		return await pako.deflateRaw(list);
+		return await pako.deflate(list);
 	},
 
 	// Can only be used on Browser with Blackprint Sketch
 	async setRegisteredNodes(data){
-		let list = await pako.inflateRaw(data, {to: 'string'});
+		pako ??= window.pako;
+
+		let list = await pako.inflate(data, {to: 'string'});
 		list = JSON.parse(list);
 
 		let nodes = Blackprint.nodes;
