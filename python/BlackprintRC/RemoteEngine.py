@@ -151,8 +151,10 @@ class RemoteEngine(RemoteBase):
 			if(data['t'] == 'd'): # disconnect
 				this._skipEvent = True
 				cable._evDisconnected = True
-				cable.disconnect()
-				this._skipEvent = False
+				try:
+					cable.disconnect()
+				finally:
+					this._skipEvent = False
 		elif(data['w'] == 'nd'): # node
 			iface = ifaceList[data['i']] if len(ifaceList) > data['i'] else None
 
@@ -183,8 +185,10 @@ class RemoteEngine(RemoteBase):
 						this._askRemoteModule(namespace)
 
 				this._skipEvent = True
-				newIface = instance.createNode(namespace, data)
-				this._skipEvent = False
+				try:
+					newIface = instance.createNode(namespace, data)
+				finally:
+					this._skipEvent = False
 
 				if(ifaceList.index(newIface) != data['i']):
 					return this._resync('Node')
@@ -255,8 +259,10 @@ class RemoteEngine(RemoteBase):
 					this._skipEvent = False
 			elif(data['t'] == 'jsonim'):
 				this._skipEvent = True
-				instance.importJSON(data['raw'], {'appendMode': data['app']})
-				this._skipEvent = False
+				try:
+					instance.importJSON(data['raw'], {'appendMode': data['app']})
+				finally:
+					this._skipEvent = False
 			elif(data['t'] == 'pdc'):
 				iface = ifaceList[data['i']]
 				iface.input[data['k']].default = data['v']

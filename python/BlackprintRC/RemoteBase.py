@@ -134,8 +134,10 @@ class RemoteBase(Blackprint.CustomEvent):
 
 	def clearNodes(this):
 		this._skipEvent = True
-		this.instance.clearNodes()
-		this._skipEvent = False
+		try:
+			this.instance.clearNodes()
+		finally:
+			this._skipEvent = False
 
 		this._onSyncOut({'w':'ins', 't':'c'})
 
