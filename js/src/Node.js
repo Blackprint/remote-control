@@ -12,14 +12,8 @@ Blackprint.Node.prototype.syncOut = function(id, data=''){
 	}
 
 	if(this.syncThrottle !== 0){
-		if(this._syncWait != null){
-			this._syncHasWait = true;
-			this._syncWait[id] = data;
-			return;
-		}
-
-		this._syncWait = {};
-		setTimeout(()=> {
+		clearTimeout(this._syncHasWait);
+		this._syncHasWait = setTimeout(() => {
 			if(this._syncHasWait)
 				instance.emit('_node.sync', {
 					iface: this.iface,
@@ -27,11 +21,14 @@ Blackprint.Node.prototype.syncOut = function(id, data=''){
 				});
 
 			this._syncWait = null;
-			this._syncHasWait = false;
 		}, this.syncThrottle);
-	}
 
-	instance.emit('_node.sync', {iface: this.iface, data: clearPrivateField({ [id]: data })});
+		if(this._syncWait == null)
+			this._syncWait = {};
+
+		this._syncWait[id] = data;
+	}
+	else instance.emit('_node.sync', {iface: this.iface, data: clearPrivateField({ [id]: data })});
 }
 
 function clearPrivateField(obj){
