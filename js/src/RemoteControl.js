@@ -76,7 +76,7 @@ class RemoteControl extends RemoteBase {
 
 			if(this.isSketch){
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
-					data: ifaceData,
+					data: ifaceData || null,
 					fid,
 					nm: ev.iface.namespace,
 					x: ev.iface.x,
@@ -84,7 +84,7 @@ class RemoteControl extends RemoteBase {
 				});
 			}
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
-				data: ifaceData,
+				data: ifaceData || null,
 				fid,
 				nm: ev.iface.namespace,
 			});
@@ -107,7 +107,7 @@ class RemoteControl extends RemoteBase {
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
 			let fid = getFunctionId(ev.iface);
-			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'});
+			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null, t:'s'});
 		});
 
 		let evModuleDelete;

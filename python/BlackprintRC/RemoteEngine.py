@@ -49,7 +49,7 @@ class RemoteEngine(RemoteBase):
 			# if(this._skipEvent and !this._isImporting) return
 			fid = getFunctionId(ev['iface'])
 			ifaceList = ev['iface'].node.instance.ifaceList
-			this._onSyncOut({'w':'nd', 'fid': fid, 'i':ifaceList.index(ev['iface']), 'd': ev['data'], 't':'s'})
+			this._onSyncOut({'w':'nd', 'fid': fid, 'i':ifaceList.index(ev['iface']), 'd': (ev['data'] if 'data' in ev else None) or None, 't':'s'})
 		instance.on('_node.sync', evNodeSync)
 
 		def evError(ev):
@@ -260,7 +260,9 @@ class RemoteEngine(RemoteBase):
 			elif(data['t'] == 'jsonim'):
 				this._skipEvent = True
 				try:
-					instance.importJSON(data['raw'], {'appendMode': data['app']})
+					instance.importJSON(data['raw'], {
+						'appendMode': data['app'] if 'app' in data else False
+					})
 				finally:
 					this._skipEvent = False
 			elif(data['t'] == 'pdc'):

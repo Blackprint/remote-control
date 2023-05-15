@@ -44,7 +44,7 @@ class RemoteEngine extends RemoteBase {
 			// if(this._skipEvent && !this._isImporting) return;
 			let fid = getFunctionId(ev.iface);
 			let ifaceList = ev.iface.node.instance.ifaceList;
-			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data, t:'s'})
+			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null, t:'s'})
 		});
 
 		let evError;
