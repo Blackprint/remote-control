@@ -30,10 +30,10 @@ remote.on('module.add', ({ list }) => {
 	console.log(`Adding ${list.length} new module, triggered by remote sync`);
 });
 remote.on('module.added', ({ list, failed }) =>{
-	console.log(`${list.length} new module has been added`)
+	console.log(`${list.length} new module has been added`);
 
 	if(failed.length !== 0)
-		console.log(`Failed to add ${failed.length} new module`)
+		console.log(`Failed to add ${failed.length} new module`);
 });
 remote.on('module.remove', ({ list }) => {
 	console.log(`${list.length} module has been removed, triggered by remote sync`);
@@ -53,8 +53,14 @@ io.on('connection', client => {
 	client.on('relay', data => remote.onSyncIn(data));
 	remote.onSyncOut = data => client.emit('relay', data);
 
+	client.on('puppetnode.ask', async () => {
+		client.emit('puppetnode.answer', await Blackprint.PuppetNode.getRegisteredNodes());
+	});
+
 	console.log('Remote control: connected');
-	client.on('disconnect', () => console.log('Remote control: disconnected'));
+	client.on('disconnect', () => {
+		console.log('Remote control: disconnected');
+	});
 
 	setTimeout(() => {
 		client.emit('startup-time', engineStartup);
@@ -63,3 +69,8 @@ io.on('connection', client => {
 
 console.log(`Waiting connection on port: ${port}`);
 httpServer.listen(port);
+
+// Blackprint.loadModuleFromURL([
+// 	"http://localhost:6789/dist/nodes-console.mjs?1676988045346",
+// 	"http://localhost:6789/dist/nodes-data.mjs?1676988045346",
+// ]);
