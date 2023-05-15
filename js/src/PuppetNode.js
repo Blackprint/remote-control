@@ -6,6 +6,7 @@ let nativeTypeList = new Map([
 	[Boolean, {name: 'Boolean'}],
 	[Object, {name: 'Object'}],
 	[Array, {name: 'Array'}],
+	[Function, {name: 'Function'}],
 	[Blackprint.Types.Any, {name: 'Any'}],
 	[Blackprint.Types.Route, {name: 'Route'}],
 	[Blackprint.Types.Slot, {name: 'Slot'}],
@@ -144,6 +145,7 @@ Blackprint.PuppetNode = {
 					else if(temp.type === 'Number') type = Number;
 					else if(temp.type === 'Object') type = Object;
 					else if(temp.type === 'Array') type = Array;
+					else if(temp.type === 'Function') type = Function;
 					else if(temp.type === 'Any') type = Blackprint.Types.Any;
 					else if(temp.type === 'Route') type = Blackprint.Types.Route;
 					else if(temp.type === 'Slot') type = Blackprint.Types.Slot;

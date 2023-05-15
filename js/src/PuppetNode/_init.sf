@@ -172,7 +172,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			], multiple: false},
 			{type: "file_in", id: "file_in", tooltip: "File input"},
 			{type: "file_out", id: "file_out", tooltip: "File download", inline: true},
-			{type: "button_in", id: "button_in", tooltip: "Button input", inline: true}, */
+			{type: "button_in", id: "button_in", tooltip: "Button input", text: 'Button', inline: true}, */
 		];
 	}
 	init(){
