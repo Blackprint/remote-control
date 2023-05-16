@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-	name='BlackprintRC',
+	name='blackprint-rc',
 	version='0.1.10',
 	packages=['BlackprintRC'],
 	# scripts=['bin/script1','bin/script2'],

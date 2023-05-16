@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      python:
+        description: "Set this to dryRun if you didn't plan to publish for Python"
+        required: true
+        default: 'dryRun'
+  # release:
+    # This specifies that the build will be triggered when we publish a release
+    # types: [published]
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: ⚙ Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: ⚙ Install dependencies
+        working-directory: ./python
+        run: python -m pip install build wheel twine
+
+      - name: 🛠 Build module
+        working-directory: ./python
+        run: python -m build --wheel
+
+      # - name: 🔥 Run unit tests
+      #   run: py ./tests/entry.py
+
+      - name: 📦 Test Publish to PyPI
+        if: github.event.inputs.python == 'dryRun'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          packages-dir: ./python/dist
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: 📦 Publish to PyPI
+        if: github.event.inputs.python != 'dryRun'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: ./python/dist

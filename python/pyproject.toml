@@ -1,5 +1,5 @@
 [project]
-name = "BlackprintRC"
+name = "blackprint-rc"
 version = "0.1.10"
 description = "Blackprint Engine remote control feature for Python"
 readme = "README.md"
