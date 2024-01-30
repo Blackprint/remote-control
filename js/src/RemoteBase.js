@@ -196,12 +196,56 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					});
 				}
 			}
+			else if(data.t === 'vrn'){ // variable.renamed
+				if(data.scp === Blackprint.VarScope.Public){
+					this.instance.renameVariable(data.old, data.now, data.scp);
+				}
+				else {
+					this.instance.functions[data.fid].renameVariable(data.old, data.now, data.scp);
+				}
+			}
+			else if(data.t === 'vdl'){ // variable.deleted
+				if(data.scp === Blackprint.VarScope.Public){
+					this.instance.deleteVariable(data.id, data.scp);
+				}
+				else {
+					this.instance.functions[data.fid].deleteVariable(data.id, data.scp);
+				}
+			}
+
 			else if(data.t === 'cfn'){ // create function.new
 				this.instance.createFunction(data.id, {
 					title: data.ti,
 					description: data.dsc
 				});
 			}
+			else if(data.t === 'frn'){ // function.renamed
+				this.instance.renameFunction(data.old, data.now);
+			}
+			else if(data.t === 'fdl'){ // function.deleted
+				this.instance.deleteFunction(data.id);
+			}
+
+			else if(data.t === 'cev'){ // create event.new
+				this.instance.events.createEvent(data.nm);
+			}
+			else if(data.t === 'evrn'){ // event.renamed
+				this.instance.events.renameEvent(data.old, data.now);
+			}
+			else if(data.t === 'evdl'){ // event.deleted
+				this.instance.events.deleteEvent(data.nm);
+			}
+
+			else if(data.t === 'evfcr'){ // create event.field.new
+				this.instance.events.list[data.nm].used[0].createField(data.name);
+			}
+			else if(data.t === 'evfrn'){ // event.field.renamed
+				this.instance.events.list[data.nm].used[0].renameField(data.old, data.now);
+			}
+			else if(data.t === 'evfdl'){ // event.field.deleted
+				this.instance.events.list[data.nm].used[0].deleteField(data.name);
+			}
+
 			else{
 				this._skipEvent = false;
 				return data;

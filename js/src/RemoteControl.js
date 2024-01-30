@@ -73,12 +73,22 @@ class RemoteControl extends RemoteBase {
 			let fid = getFunctionId(ev.iface);
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
-			// Use exportData if exist, or convert to string first then parse it (to also trigger .toJSON if exist)
-			let ifaceData = ev.iface.data != null && (ev.iface.exportData?.() || JSON.parse(JSON.stringify(ev.iface.data)));
+			let exportedIface = instance.exportJSON({
+				ifaceList: [ev.iface],
+				environment: false,
+				module: false,
+				exportFunctions: false,
+				exportVariables: false,
+				exportEvents: false,
+				toRawObject: true,
+			}).instance[ev.iface.namespace][0];
 
 			if(this.isSketch){
+				instance.scope('nodes').deselectAll();
+				instance.scope('cables').deselectAll();
+
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
-					data: ifaceData || null,
+					data: exportedIface.data,
 					fid,
 					nm: ev.iface.namespace,
 					x: ev.iface.x,
@@ -86,7 +96,7 @@ class RemoteControl extends RemoteBase {
 				});
 			}
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
-				data: ifaceData || null,
+				data: exportedIface.data,
 				fid,
 				nm: ev.iface.namespace,
 			});
@@ -179,24 +189,6 @@ class RemoteControl extends RemoteBase {
 			this._onSyncOut({w:'ins', t:'prsc', fid, i, k: port.name, v: false});
 		});
 
-		let insVariableNew;
-		instance.on('variable.new', insVariableNew = (ev) => {
-			if(this._skipEvent) return;
-			this.saveSketchToRemote();
-			if(ev.funcInstance != null){
-				let funcId = ev.funcInstance.id;
-				this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ev.title, scp: ev.scope ?? ev._scope, fid: funcId});
-				return;
-			}
-			this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ev.title, scp: ev._scope});
-		});
-		let insFunctionNew;
-		instance.on('function.new', insFunctionNew = (ev) => {
-			if(this._skipEvent) return;
-			this.saveSketchToRemote();
-			this._onSyncOut({w:'ins', t:'cfn', id: ev.id, ti: ev.title, dsc: ev.description});
-		});
-
 		let fnRenamePort;
 		instance.on('_fn.rename.port', fnRenamePort = ({ iface, which, fromName, toName }) => {
 			if(this._skipEvent) return;
@@ -207,21 +199,142 @@ class RemoteControl extends RemoteBase {
 			this._onSyncOut({w:'nd', t:'fnrnp', i, fid, wh: which, fnm: fromName, tnm: toName});
 		});
 
+		let insVariableNew;
+		instance.on('variable.new', insVariableNew = (ev) => { // ref = BPVariable
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			let ref = ev.reference;
+			if(ev.bpFunction != null){
+				let funcId = ev.bpFunction.id;
+				this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ref?.title, scp: ev.scope, fid: funcId});
+				return;
+			}
+			this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ref?.title, scp: ev.scope});
+		});
+
+		let varRenamed;
+		instance.on('variable.renamed', varRenamed = (ev) => { // ref = BPVariable
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			if(ev.bpFunction != null){
+				let funcId = ev.bpFunction.id;
+				this._onSyncOut({w:'ins', t:'vrn', id: ev.id, old: ev.old, now: ev.now, scp: ev.scope, fid: funcId});
+				return;
+			}
+			this._onSyncOut({w:'ins', t:'vrn', id: ev.id, old: ev.old, now: ev.now, scp: ev.scope});
+		});
+
+		let varDeleted;
+		instance.on('variable.deleted', varDeleted = (ev) => { // ref = BPVariable
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			if(ev.bpFunction != null){
+				let funcId = ev.bpFunction.id;
+				this._onSyncOut({w:'ins', t:'vdl', id: ev.id, scp: ev.scope, fid: funcId});
+				return;
+			}
+			this._onSyncOut({w:'ins', t:'vdl', id: ev.id, scp: ev.scope});
+		});
+
+		let insFunctionNew;
+		instance.on('function.new', insFunctionNew = ({ reference: ref }) => { // ref = BPFunction
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'cfn', id: ref.id, ti: ref.title, dsc: ref.description});
+		});
+
+		let funcRenamed;
+		instance.on('function.renamed', funcRenamed = (ev) => { // ref = BPFunction
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'frn', old: ev.old, now: ev.now});
+		});
+
+		let funcDeleted;
+		instance.on('function.deleted', funcDeleted = (ev) => { // ref = BPFunction
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'fdl', id: ev.id});
+		});
+
+		let eventCreated;
+		instance.on('event.created', eventCreated = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'cev', nm: ev.reference.namespace});
+		});
+
+		let eventRenamed;
+		instance.on('event.renamed', eventRenamed = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'evrn', old: ev.old, now: ev.now});
+		});
+
+		let eventDeleted;
+		instance.on('event.deleted', eventDeleted = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'evdl', id: ev.reference.id});
+		});
+
+		let eventFieldCreated;
+		instance.on('event.field.created', eventFieldCreated = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'evfcr', nm: ev.namespace, name: ev.name});
+		});
+
+		let eventFieldRenamed;
+		instance.on('event.field.renamed', eventFieldRenamed = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'evfrn', nm: ev.namespace, old: ev.old, now: ev.now});
+		});
+
+		let eventFieldDeleted;
+		instance.on('event.field.deleted', eventFieldDeleted = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'evfdl', nm: ev.namespace, name: ev.name});
+		});
+
+		let envAdded;
+		Blackprint.on('environment.added', envAdded = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'envadd', key: ev.key});
+		});
+
+		let envRenamed;
+		Blackprint.on('environment.renamed', envRenamed = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'envrn', old: ev.old, now: ev.now});
+		});
+
+		let envDeleted;
+		Blackprint.on('environment.deleted', envDeleted = (ev) => {
+			if(this._skipEvent) return;
+			this.saveSketchToRemote();
+			this._onSyncOut({w:'ins', t:'envdl', key: ev.key});
+		});
+
 		// ToDo: change below to `_fn.structure.update` after the engine was updated
 		let saveFnStructureChanges, saveFnStructureChangesDebounce;
 		instance.on('cable.connect cable.disconnect node.created node.delete node.move node.id.changed port.default.changed _port.split _port.unsplit _port.resync.allow _port.resync.disallow', saveFnStructureChanges = (ev) => {
-			let funcInstance = ev.port?.iface.node.instance._funcMain?._funcInstance;
-			if(funcInstance == null) funcInstance = ev.iface?.node.instance._funcMain?._funcInstance;
-			if(funcInstance == null) funcInstance = ev.cable?.owner.iface.node.instance._funcMain?._funcInstance;
-			if(funcInstance == null) return;
+			let bpFunction = ev.port?.iface.node.instance.parentInterface?.bpFunction;
+			if(bpFunction == null) bpFunction = ev.iface?.node.instance.parentInterface?.bpFunction;
+			if(bpFunction == null) bpFunction = ev.cable?.owner.iface.node.instance.parentInterface?.bpFunction;
+			if(bpFunction == null) return;
 
 			clearTimeout(saveFnStructureChangesDebounce);
 			saveFnStructureChangesDebounce = setTimeout(() => {
 				this._onSyncOut({
 					w:'ins',
 					t:'sfns',
-					fid: funcInstance.id,
-					d: instance.functions[funcInstance.id].structure,
+					fid: bpFunction.id,
+					d: instance.functions[bpFunction.id].structure,
 				});
 			}, 1500);
 		});
@@ -241,9 +354,22 @@ class RemoteControl extends RemoteBase {
 			instance.off('port.default.changed', portDefaultChanged);
 			instance.off('_port.resync.allow', portResyncAllow);
 			instance.off('_port.resync.disallow', portResyncDisallow);
-			instance.off('variable.new', insVariableNew);
-			instance.off('function.new', insFunctionNew);
 			instance.off('_fn.rename.port', fnRenamePort);
+			instance.off('variable.new', insVariableNew);
+			instance.off('variable.renamed', varRenamed);
+			instance.off('variable.deleted', varDeleted);
+			instance.off('function.new', insFunctionNew);
+			instance.off('function.renamed', funcRenamed);
+			instance.off('function.deleted', funcDeleted);
+			instance.off('event.created', eventCreated);
+			instance.off('event.renamed', eventRenamed);
+			instance.off('event.deleted', eventDeleted);
+			instance.off('event.field.created', eventFieldCreated);
+			instance.off('event.field.renamed', eventFieldRenamed);
+			instance.off('event.field.deleted', eventFieldDeleted);
+			Blackprint.off('environment.added', envAdded);
+			Blackprint.off('environment.renamed', envRenamed);
+			Blackprint.off('environment.deleted', envDeleted);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
@@ -294,10 +420,10 @@ class RemoteControl extends RemoteBase {
 	}
 
 	async onSyncIn(data){
+		if(data.w === 'skc') return data;
+
 		data = await super.onSyncIn(data);
 		if(data == null) return;
-
-		if(data.w === 'skc') return data;
 
 		let instance = this.instance;
 		if(data.fid != null){
@@ -441,10 +567,21 @@ class RemoteControl extends RemoteBase {
 			if(data.t === 'ci'){
 				this._skipEvent = true;
 
-				if(data.d != null)
-					await instance.importJSON(data.d);
-				else
-					this.emit('empty.json.import');
+				if(data.d != null) this.emit('empty.json.import');
+				else {
+					let isEmptyInstance = true;
+					for (let key in data.d.instance) {
+						isEmptyInstance = false;
+						break;
+					}
+
+					if(!isEmptyInstance){
+						instance.clearNodes();
+						console.log(data.d)
+						await instance.importJSON(data.d);
+					}
+					else this.emit('empty.json.import');
+				}
 
 				this._skipEvent = false;
 			}
@@ -463,7 +600,6 @@ class RemoteControl extends RemoteBase {
 			}
 			else if(data.t === 'askfns'){ // ask function structure
 				this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: instance.functions[data.fid].structure});
-				// this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: JSON.stringify(instance.functions[data.fid].structure)});
 			}
 			else if(data.t === 'addrm')
 				this._answeredRemoteModule(data.nm, data.d);
