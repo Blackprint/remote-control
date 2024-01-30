@@ -51,7 +51,7 @@ function elementChildIndexes(array, context){
 function getFunctionId(iface){
 	if(iface == null) return null;
 	if(iface instanceof Blackprint.Engine) // if instance
-		return iface._funcMain?.node._funcInstance.id;
+		return iface.parentInterface?.node.bpFunction.id;
 
-	return iface.node.instance._funcMain?.node._funcInstance.id;
+	return iface.node.instance.parentInterface?.node.bpFunction.id;
 }
