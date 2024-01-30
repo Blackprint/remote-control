@@ -1,4 +1,5 @@
 // Remote Control between Sketch <-> Sketch
+// Used by Sketch to sync data or remoting with other Sketch
 
 function initContainer(instance) {
 	let spaceEl = instance.scope.domList[0];

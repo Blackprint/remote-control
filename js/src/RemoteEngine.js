@@ -1,4 +1,5 @@
 // Remote Control between Engine <-> Sketch
+// Used by Engine to accept remote from the Sketch including send/receive data with the Sketch
 
 // ToDo: port to PHP, Golang, and other programming languages
 class RemoteEngine extends RemoteBase {
@@ -155,6 +156,7 @@ class RemoteEngine extends RemoteBase {
 				cable.disconnect();
 				this._skipEvent = false;
 			}
+			else console.log(`Unrecognized event: ${data.w} -> type: ${data.t}`)
 		}
 		else if(data.w === 'nd'){ // node
 			let iface = ifaceList[data.i];
@@ -202,6 +204,7 @@ class RemoteEngine extends RemoteBase {
 			else if(data.t === 'fnrnp'){ // function rename node port
 				iface.renamePort(data.wh, data.fnm, data.tnm);
 			}
+			else console.log(`Unrecognized event: ${data.w} -> type: ${data.t}`)
 		}
 		else if(data.w === 'ins'){ // instance
 			if(data.t === 'c'){ // clean nodes
@@ -286,6 +289,7 @@ class RemoteEngine extends RemoteBase {
 				let iface = ifaceList[data.i];
 				iface.output[data.k].allowResync = data.v;
 			}
+			else console.log(`Unrecognized event: ${data.w} -> type: ${data.t}`)
 		}
 	}
 }

@@ -1,4 +1,6 @@
 // Remote Control between Sketch <-> Engine
+// Used by Sketch to remoting the Engine including send/receive data with the Engine
+// This will also be used for syncing between other Sketch remotely
 
 // Will be extended by RemoteSketch
 class RemoteControl extends RemoteBase {

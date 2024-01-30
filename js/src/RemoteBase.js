@@ -1,3 +1,5 @@
+// Used by Sketch and Engine as a base class for remoting or send/receive data
+
 class RemoteBase extends Blackprint.Engine.CustomEvent {
 	// true  => allow
 	// false => block
