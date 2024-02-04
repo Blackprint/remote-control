@@ -25,6 +25,42 @@ class RemoteEngine extends RemoteBase {
 			});
 		});
 
+		let evExecPaused;
+		instance.on('execution.paused', evExecPaused = ({ 
+			afterNode,
+			beforeNode,
+			cable,
+			cables,
+
+			// 0 = execution order, 1 = route, 2 = trigger port, 3 = request
+			// execution priority: 3, 2, 1, 0
+			triggerSource,
+		}) => {
+			let _cable;
+			if(cable != null){
+				_cable = {};
+				let { input, output } = cable;
+				if(input != null) _cable.in = {name: input.name, i: input.iface.i};
+				if(output != null) _cable.out = {name: output.name, i: output.iface.i};
+			}
+
+			this._onSyncOut({
+				w:'ins',
+				t:'exp',
+				ts: triggerSource,
+				an: afterNode?.iface.i,
+				bn: beforeNode?.iface.i,
+				cb: _cable,
+				cbs: cables?.map(cable => {
+					_cable = {};
+					let { input, output } = cable;
+					if(input != null) _cable.in = {name: input.name, i: input.iface.i};
+					if(output != null) _cable.out = {name: output.name, i: output.iface.i};
+					return _cable;
+				}),
+			});
+		});
+
 		let evFlowEvent;
 		instance.on('_flowEvent', evFlowEvent = ({ cable }) => {
 			if(this._skipEvent && !this._isImporting) return;
@@ -54,24 +90,11 @@ class RemoteEngine extends RemoteBase {
 			this._onSyncOut({w:'err', d: ev.data})
 		});
 
-		let _fnStructureUpdate;
-		// instance.on('_fn.structure.update', _fnStructureUpdate = ev => {
-		// 	if(this._skipEvent) return;
-
-			// ask function structure
-			// this._onSyncOut({w:'ins', t: 'askfns', fid: ev.bpFunction.id });
-		// });
-
-		// instance.on('cable.connecting', cable => {});
-		// instance.on('cable.cancel', cable => {});
-		// instance.on('port.output.call', cable => {});
-		// instance.on('port.output.value', cable => {});
-
 		this.destroy = () => {
 			instance.off('cable.disconnect', evCableDisconnect);
+			instance.off('execution.paused', evExecPaused);
 			instance.off('_flowEvent', evFlowEvent);
 			instance.off('_node.sync', evNodeSync);
-			// instance.off('_fn.structure.update', _fnStructureUpdate);
 			instance.off('error', evError);
 
 			this.onSyncIn = ()=>{};
@@ -207,7 +230,22 @@ class RemoteEngine extends RemoteBase {
 			else console.log(`Unrecognized event: ${data.w} -> type: ${data.t}`)
 		}
 		else if(data.w === 'ins'){ // instance
-			if(data.t === 'c'){ // clean nodes
+			if(data.t === 'exeen'){
+				instance.executionOrder.stepMode = data.flag;
+				this._onSyncOut({w:'ins', t:'exens', flag: data.flag});
+			}
+			else if(data.t === 'exps'){
+				if(data.pause){
+					this._onSyncOut({w:'ins', t:'exps', pause: true});
+					instance.executionOrder.pause = true;
+				}
+				else {
+					this._onSyncOut({w:'ins', t:'exps', pause: false});
+					instance.executionOrder.pause = false;
+					instance.executionOrder.next(true);
+				}
+			}
+			else if(data.t === 'c'){ // clean nodes
 				this._skipEvent = true;
 				this.jsonTemp = null;
 				this.jsonSyncTime = 0;

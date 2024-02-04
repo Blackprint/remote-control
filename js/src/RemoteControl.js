@@ -340,15 +340,14 @@ class RemoteControl extends RemoteBase {
 		});
 
 		this.destroy = () => {
+			instance.off('json.importing', evJsonImporting);
+			instance.off('json.imported', evJsonImported);
 			instance.off('cable.connect', evCableConnect);
 			instance.off('cable.disconnect', evCableDisconnect);
 			instance.off('node.created', evNodeCreated);
 			instance.off('node.delete', evNodeDelete);
 			instance.off('_node.sync', evNodeSync);
 			instance.off('node.id.changed', nodeIDChanged);
-			instance.off('json.importing', evJsonImporting);
-			instance.off('json.imported', evJsonImported);
-			Blackprint.off('moduleDelete', evModuleDelete);
 			instance.off('_port.split', portSplit);
 			instance.off('_port.unsplit', portUnsplit);
 			instance.off('port.default.changed', portDefaultChanged);
@@ -367,9 +366,11 @@ class RemoteControl extends RemoteBase {
 			instance.off('event.field.created', eventFieldCreated);
 			instance.off('event.field.renamed', eventFieldRenamed);
 			instance.off('event.field.deleted', eventFieldDeleted);
+			Blackprint.off('moduleDelete', evModuleDelete);
 			Blackprint.off('environment.added', envAdded);
 			Blackprint.off('environment.renamed', envRenamed);
 			Blackprint.off('environment.deleted', envDeleted);
+			instance.off('cable.connect cable.disconnect node.created node.delete node.move node.id.changed port.default.changed _port.split _port.unsplit _port.resync.allow _port.resync.disallow', saveFnStructureChanges);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
@@ -564,7 +565,22 @@ class RemoteControl extends RemoteBase {
 			}
 		}
 		else if(data.w === 'ins'){ // instance
-			if(data.t === 'ci'){
+			if(data.t === 'exens'){ // execution order enabled status
+				this.emit('stepmode.enabled', data); // data.flag
+			}
+			else if(data.t === 'exps'){ // execution order paused status
+				this.emit('stepmode.paused', data); // data.pause
+			}
+			else if(data.t === 'exp'){ // execution order paused status
+				this.emit('stepmode.status', {
+					triggerSource: data.ts,
+					afterNode: data.an,
+					beforeNode: data.bn,
+					cable: data.cb,
+					cables: data.cbs,
+				});
+			}
+			else if(data.t === 'ci'){
 				this._skipEvent = true;
 
 				if(data.d != null) this.emit('empty.json.import');
@@ -647,6 +663,22 @@ class RemoteControl extends RemoteBase {
 		}
 
 		if(data.w === 'err') console.error("RemoteError:", data.d);
+	}
+
+	// For controlling remote engine's execution order
+	enableStepMode(flag=true){
+		this._onSyncOut({
+			w:'ins',
+			t:'exeen',
+			flag,
+		});
+	}
+	pauseExecution(pause=true){
+		this._onSyncOut({
+			w:'ins',
+			t:'exps',
+			pause,
+		});
 	}
 }
 
