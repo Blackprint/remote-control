@@ -2,7 +2,7 @@
 // Used for sending node's data from Sketch -> Engine, or Engine -> Sketch
 
 Blackprint.Node.prototype.syncOut = function(id, data=''){
-	let instance = this.instance._mainInstance || this.instance;
+	let instance = this.instance.rootInstance || this.instance;
 	if(instance._remote == null || this._syncronizing || instance.syncDataOut === false)
 		return;
 
