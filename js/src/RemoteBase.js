@@ -154,7 +154,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 
 		let instance = this.instance;
 		if(data.fid != null){
-			instance = this.instance.functions[data.fid].used[0]?.bpInstance;
+			instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0]?.bpInstance;
 			if(instance == null)
 				return this._resync('FunctionNode');
 		}
@@ -189,7 +189,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					});
 				}
 				else {
-					this.instance.functions[data.fid].createVariable(data.id, {
+					getDeepProperty(this.instance.functions, data.fid.split('/')).createVariable(data.id, {
 						title: data.ti,
 						description: data.dsc,
 						scope: data.scp
@@ -201,7 +201,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					this.instance.renameVariable(data.old, data.now, data.scp);
 				}
 				else {
-					this.instance.functions[data.fid].renameVariable(data.old, data.now, data.scp);
+					getDeepProperty(this.instance.functions, data.fid.split('/')).renameVariable(data.old, data.now, data.scp);
 				}
 			}
 			else if(data.t === 'vdl'){ // variable.deleted
@@ -209,7 +209,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					this.instance.deleteVariable(data.id, data.scp);
 				}
 				else {
-					this.instance.functions[data.fid].deleteVariable(data.id, data.scp);
+					getDeepProperty(this.instance.functions, data.fid.split('/')).deleteVariable(data.id, data.scp);
 				}
 			}
 

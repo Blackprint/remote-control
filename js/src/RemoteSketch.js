@@ -322,7 +322,7 @@ class RemoteSketch extends RemoteControl {
 		let instance = this.instance;
 		if(data.fid != null){
 			// Use the curent active function page
-			let used = this.instance.functions[data.fid].used;
+			let used = getDeepProperty(this.instance.functions, data.fid.split('/')).used;
 			for (var i=0; i < used.length; i++) {
 				instance = used[i].$el[0].closest('.page-current');
 				if(instance != null){
@@ -331,7 +331,7 @@ class RemoteSketch extends RemoteControl {
 				}
 			}
 
-			if(i === used.length) instance = this.instance.functions[data.fid].used[0].bpInstance;
+			if(i === used.length) instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0].bpInstance;
 			if(instance == null)
 				return this._resync('FunctionNode');
 		}

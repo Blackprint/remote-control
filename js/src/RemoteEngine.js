@@ -114,7 +114,7 @@ class RemoteEngine extends RemoteBase {
 
 		let instance = this.instance;
 		if(data.fid != null){
-			instance = this.instance.functions[data.fid].used[0]?.bpInstance;
+			instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0]?.bpInstance;
 			if(instance == null)
 				return this._resync('FunctionNode');
 		}
@@ -275,8 +275,8 @@ class RemoteEngine extends RemoteBase {
 				this.jsonSyncTime = Date.now();
 			}
 			else if(data.t === 'sfns'){ // sync function structure
-				this.instance.functions[data.fid].structure = data.d;
-				// this.instance.functions[data.fid].structure = JSON.parse(data.d);
+				getDeepProperty(this.instance.functions, data.fid.split('/')).structure = data.d;
+				// getDeepProperty(this.instance.functions, data.fid.split('/')).structure = JSON.parse(data.d);
 			}
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);

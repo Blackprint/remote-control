@@ -55,3 +55,7 @@ function getFunctionId(iface){
 
 	return iface.node.instance.parentInterface?.node.bpFunction.id;
 }
+
+var getDeepProperty = Blackprint._utils.getDeepProperty;
+var setDeepProperty = Blackprint._utils.setDeepProperty;
+var deleteDeepProperty = Blackprint._utils.deleteDeepProperty;

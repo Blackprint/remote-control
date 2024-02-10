@@ -334,7 +334,7 @@ class RemoteControl extends RemoteBase {
 					w:'ins',
 					t:'sfns',
 					fid: bpFunction.id,
-					d: instance.functions[bpFunction.id].structure,
+					d: getDeepProperty(instance.functions, bpFunction.id.split('/')).structure,
 				});
 			}, 1500);
 		});
@@ -428,7 +428,7 @@ class RemoteControl extends RemoteBase {
 
 		let instance = this.instance;
 		if(data.fid != null){
-			instance = this.instance.functions[data.fid].used[0]?.bpInstance;
+			instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0]?.bpInstance;
 			if(instance == null)
 				return this._resync('FunctionNode');
 		}
@@ -615,7 +615,7 @@ class RemoteControl extends RemoteBase {
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
 			else if(data.t === 'askfns'){ // ask function structure
-				this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: instance.functions[data.fid].structure});
+				this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: getDeepProperty(instance.functions, data.fid.split('/')).structure});
 			}
 			else if(data.t === 'addrm')
 				this._answeredRemoteModule(data.nm, data.d);
