@@ -90,12 +90,19 @@ class RemoteEngine extends RemoteBase {
 			this._onSyncOut({w:'err', d: ev.data})
 		});
 
+		let evExecutionTerminated;
+		instance.on('execution.terminated', evExecutionTerminated = ({ reason, iface }) => {
+			if(this._skipEvent) return;
+			this._onSyncOut({w:'execterm', reason: reason});
+		});
+
 		this.destroy = () => {
 			instance.off('cable.disconnect', evCableDisconnect);
 			instance.off('execution.paused', evExecPaused);
 			instance.off('_flowEvent', evFlowEvent);
 			instance.off('_node.sync', evNodeSync);
 			instance.off('error', evError);
+			instance.off('execution.terminated', evExecutionTerminated);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};

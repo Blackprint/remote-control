@@ -663,6 +663,10 @@ class RemoteControl extends RemoteBase {
 		}
 
 		if(data.w === 'err') console.error("RemoteError:", data.d);
+		if(data.w === 'execterm') {
+			console.error("RemoteError:", data.reason);
+			instance._emit('execution.terminated', {reason: data.reason});
+		}
 	}
 
 	// For controlling remote engine's execution order
