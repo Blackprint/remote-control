@@ -607,7 +607,7 @@ class RemoteControl extends RemoteBase {
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
-				this._onSyncOut({w:'ins', t:'ci', d: instance.exportJSON({
+				this._onSyncOut({w:'ins', t:'rajs', d: instance.exportJSON({
 					toRawObject: true,
 					environment: false
 				})});

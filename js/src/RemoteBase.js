@@ -11,14 +11,9 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	_onSyncOut(data){ this.onSyncOut(data) }
 	// _onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 
-	__resync = false;
 	_resync(which){
-		if(which) console.error(which + " list was not synced");
-		if(this.__resync) return;
-		this.__resync = true;
-		console.log("Blackprint: Resyncing diagrams");
-		this.importRemoteJSON();
-		this.__resync = false;
+		this.emit("need.sync", { unsynced: which });
+		this._skipEvent = false;
 	}
 
 	constructor(instance){
@@ -57,8 +52,24 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		}
 	}
 
-	async importRemoteJSON(){
-		this._onSyncOut({w:'ins', t:'ajs'});
+	// ToDo: make custom library/CLI version to handle data relaying
+	// so we can handle this request to be redirected to another remote sketch instance
+	_RemoteJSON_Respond = null;
+	_RemoteJSON_Reject = null;
+	requestRemoteJSON(){
+		this._RemoteJSON_Reject?.("Re-requesting JSON data from the remote instance");
+
+		let that = this;
+		return new Promise((resolve, reject) => {
+			function cleanup(){
+				that._RemoteJSON_Respond = null;
+				that._RemoteJSON_Reject = null;
+			}
+
+			this._RemoteJSON_Respond = function(json){ resolve(json); cleanup(); }
+			this._RemoteJSON_Reject = function(){ reject(); cleanup(); };
+			this._onSyncOut({w:'ins', t:'ajs'});
+		});
 	}
 
 	_sMLPending = false;
@@ -245,7 +256,12 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 			else if(data.t === 'evfdl'){ // event.field.deleted
 				this.instance.events.list[data.nm].used[0].deleteField(data.name);
 			}
+			else if(data.t === 'rajs'){
+				if(this._RemoteJSON_Respond == null) return this._skipEvent = false; // This instance was not requesting the data
 
+				if(data.d != null) this._RemoteJSON_Respond(data.d);
+				else this._RemoteJSON_Reject(data.error ?? "Peer instance responsed with empty data");
+			}
 			else{
 				this._skipEvent = false;
 				return data;

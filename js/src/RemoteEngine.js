@@ -288,7 +288,7 @@ class RemoteEngine extends RemoteBase {
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
 			else if(data.t === 'ajs') // ask json
-				this._onSyncOut({w:'ins', t:'ci', d: this.jsonTemp});
+				this._onSyncOut({w:'ins', t:'rajs', d: this.jsonTemp});
 			else if(data.t === 'askrm'){
 				let namespace = data.nm;
 				let clazz = Blackprint._utils.getDeepProperty(Blackprint.nodes, namespace.split('/'));
