@@ -271,7 +271,6 @@ class RemoteEngine extends RemoteBase {
 					this.emit('sketch.import', {data: data.d});
 					await instance.importJSON(data.d);
 					this.emit('sketch.imported', {data: data.d});
-					this._skipEvent = false;
 					this._isImporting = false;
 				}
 
@@ -300,6 +299,7 @@ class RemoteEngine extends RemoteBase {
 			else if(data.t === 'nidc'){ // node id changed
 				this._skipEvent = true;
 				let iface = ifaceList[data.i];
+				if(iface == null) return this._resync("Node");
 
 				try{
 					if(iface == null)
@@ -324,6 +324,7 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'pdc'){
 				let iface = ifaceList[data.i];
+				if(iface == null) return this._resync("Node");
 				iface.input[data.k].default = data.v;
 
 				let node = iface.node;
@@ -332,6 +333,7 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'prsc'){
 				let iface = ifaceList[data.i];
+				if(iface == null) return this._resync("Node");
 				iface.output[data.k].allowResync = data.v;
 			}
 			else console.log(`Unrecognized event: ${data.w} -> type: ${data.t}`)

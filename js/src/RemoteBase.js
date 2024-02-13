@@ -268,7 +268,10 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 			}
 			this._skipEvent = false;
 		}
-		else return data;
+		else {
+			this._skipEvent = false;
+			return data;
+		}
 	}
 
 	destroy(){

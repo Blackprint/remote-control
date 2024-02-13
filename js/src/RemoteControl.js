@@ -526,9 +526,8 @@ class RemoteControl extends RemoteBase {
 
 			try {
 				if(data.t === 's'){ // sync
-					if(iface == null)
-						return; // Maybe when creating nodes it's trying to syncing data
-						// return this._resync('Node');
+					// Maybe when creating nodes it's trying to syncing data
+					if(iface == null) return this._resync('Node');
 
 					let node = iface.node;
 					let temp = data.d;
