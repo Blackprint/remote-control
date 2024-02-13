@@ -204,8 +204,9 @@ class RemoteControl extends RemoteBase {
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
 			let ref = ev.reference;
-			if(ev.bpFunction != null){
-				let funcId = ev.bpFunction.id;
+			let bpFunction = ev.bpFunction || ev.reference.bpFunction;
+			if(bpFunction != null){
+				let funcId = bpFunction.id;
 				this._onSyncOut({w:'ins', t:'cvn', id: ev.id, ti: ref?.title, scp: ev.scope, fid: funcId});
 				return;
 			}
@@ -216,8 +217,9 @@ class RemoteControl extends RemoteBase {
 		instance.on('variable.renamed', varRenamed = (ev) => { // ref = BPVariable
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
-			if(ev.bpFunction != null){
-				let funcId = ev.bpFunction.id;
+			let bpFunction = ev.bpFunction || ev.reference.bpFunction;
+			if(bpFunction != null){
+				let funcId = bpFunction.id;
 				this._onSyncOut({w:'ins', t:'vrn', id: ev.id, old: ev.old, now: ev.now, scp: ev.scope, fid: funcId});
 				return;
 			}
@@ -228,8 +230,9 @@ class RemoteControl extends RemoteBase {
 		instance.on('variable.deleted', varDeleted = (ev) => { // ref = BPVariable
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
-			if(ev.bpFunction != null){
-				let funcId = ev.bpFunction.id;
+			let bpFunction = ev.bpFunction || ev.reference.bpFunction;
+			if(bpFunction != null){
+				let funcId = bpFunction.id;
 				this._onSyncOut({w:'ins', t:'vdl', id: ev.id, scp: ev.scope, fid: funcId});
 				return;
 			}
