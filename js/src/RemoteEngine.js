@@ -148,7 +148,7 @@ class RemoteEngine extends RemoteBase {
 
 				if(outputPort == null){
 					if(ifaceOutput.namespace === "BP/Fn/Input")
-						outputPort = ifaceOutput.addPort(inputPort);
+						outputPort = ifaceOutput.createPort(inputPort);
 					else if(ifaceOutput.namespace === "BP/Var/Get"){
 						ifaceOutput.useType(inputPort);
 						outputPort = ifaceOutput.output.Val;
@@ -157,7 +157,7 @@ class RemoteEngine extends RemoteBase {
 
 				if(inputPort == null){
 					if(ifaceInput.namespace === "BP/Fn/Output")
-						inputPort = ifaceInput.addPort(outputPort);
+						inputPort = ifaceInput.createPort(outputPort);
 					else if(ifaceInput.namespace === "BP/Var/Set"){
 						ifaceInput.useType(outputPort);
 						inputPort = ifaceInput.input.Val;
