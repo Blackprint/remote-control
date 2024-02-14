@@ -13,10 +13,8 @@ io.on('connection', client => {
 
 	client.on('relay', data => {
 		// Let's change the UserId of this client
-		data = JSON.parse(data);
 		data.uid = userId;
-
-		client.broadcast.emit('relay', JSON.stringify(data));
+		client.broadcast.emit('relay', data);
 	});
 
 	client.broadcast.emit('user-connect', { userId });
