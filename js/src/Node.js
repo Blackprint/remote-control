@@ -6,7 +6,7 @@ Blackprint.Node.prototype.syncOut = function(id, data=''){
 	if(instance._remote == null || this._syncronizing || instance.syncDataOut === false)
 		return;
 
-	if(id.constructor !== String)
+	if(id.toUpperCase == null)
 		throw new Error("syncOut's ID must be a string, but got: "+ id);
 
 	let char = id.slice(0, 1);
