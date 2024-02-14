@@ -6,12 +6,16 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	async onImport(json){return false}
 	async onModule(urls){return false}
 
+	// Can be use to stop syncing the instance to remote sketch/engine
+	stopSync = false;
+
 	// "onSyncOut" function need to be replaced and the data need to be send to remote client
 	onSyncOut(data){}
 	_onSyncOut(data){ this.onSyncOut(data) }
 	// _onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 
 	_resync(which){
+		this.stopSync = true;
 		this.emit("need.sync", { unsynced: which });
 		this._skipEvent = false;
 	}
@@ -161,7 +165,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		if(data.w === 'skc') return;
 
 		// data = JSON.parse(data);
-		this.emit('_syncIn', data);
+		// this.emit('_syncIn', data);
 
 		let instance = this.instance;
 		if(data.fid != null){

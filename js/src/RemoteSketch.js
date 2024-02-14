@@ -172,7 +172,7 @@ class RemoteSketch extends RemoteControl {
 
 		let cableCreated;
 		instance.on('cable.created', cableCreated = ({ port, cable }) => {
-			if(that._skipEvent) return;
+			if(that._skipEvent || this.stopSync) return;
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
 			let iER = port.isRoute; // isEdgeRoute
@@ -194,7 +194,7 @@ class RemoteSketch extends RemoteControl {
 
 		let cableCreatedBranch;
 		instance.on('cable.create.branch', cableCreatedBranch = ev => {
-			if(that._skipEvent) return;
+			if(that._skipEvent || this.stopSync) return;
 			let { event, cable, type } = ev; // Don't destructure newCable
 			let container = that._getContainer(cable);
 			let list = container.cableScope.list;
@@ -232,7 +232,7 @@ class RemoteSketch extends RemoteControl {
 		
 		let edNodeComment;
 		instance.on('_editor.node.comment', edNodeComment = ({ iface }) => {
-			if(that._skipEvent) return;
+			if(that._skipEvent || this.stopSync) return;
 			let i = ifaceList.indexOf(iface);
 			fid = getFunctionId(iface);
 			that._onSyncOut({uid, w:'skc', t:'enoco', fid, i, v: iface.comment});

@@ -11,7 +11,7 @@ class RemoteEngine extends RemoteBase {
 
 		let evCableDisconnect;
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
-			if(cable._evDisconnected || this._skipEvent) return;
+			if(cable._evDisconnected || this._skipEvent || this.stopSync) return;
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
@@ -86,13 +86,13 @@ class RemoteEngine extends RemoteBase {
 
 		let evError;
 		instance.on('error', evError = ev => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this._onSyncOut({w:'err', d: ev.data})
 		});
 
 		let evExecutionTerminated;
 		instance.on('execution.terminated', evExecutionTerminated = ({ reason, iface }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this._onSyncOut({w:'execterm', reason: reason});
 		});
 

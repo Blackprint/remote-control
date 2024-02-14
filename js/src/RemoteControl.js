@@ -13,7 +13,7 @@ class RemoteControl extends RemoteBase {
 
 		let evJsonImporting;
 		instance.on('json.importing', evJsonImporting = ({ appendMode, raw }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this._skipEvent = true;
 			this._onSyncOut({
 				w:'ins',
@@ -30,7 +30,7 @@ class RemoteControl extends RemoteBase {
 
 		let evCableConnect;
 		instance.on('cable.connect', evCableConnect = ({ cable }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 			let iER = cable.isRoute; // isEdgeRoute
 			let fid = getFunctionId(cable.output.iface);
@@ -49,7 +49,7 @@ class RemoteControl extends RemoteBase {
 
 		let evCableDisconnect;
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
-			if(cable._evDisconnected || this._skipEvent) return;
+			if(cable._evDisconnected || this._skipEvent || this.stopSync) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
@@ -75,7 +75,7 @@ class RemoteControl extends RemoteBase {
 
 		let evNodeCreated;
 		instance.on('node.created', evNodeCreated = ev => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let fid = getFunctionId(ev.iface);
 			let ifaceList = ev.iface.node.instance.ifaceList;
@@ -119,7 +119,7 @@ class RemoteControl extends RemoteBase {
 
 		let evNodeDelete;
 		instance.on('node.delete', evNodeDelete = ev => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
@@ -129,7 +129,7 @@ class RemoteControl extends RemoteBase {
 
 		let evNodeSync;
 		instance.on('_node.sync', evNodeSync = ev => { // internal node data sync
-			// if(this._skipEvent) return;
+			// if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
@@ -144,24 +144,24 @@ class RemoteControl extends RemoteBase {
 
 		let evModuleDelete;
 		Blackprint.on('module.delete', evModuleDelete = ev => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.syncModuleList();
 		});
 
 		let nodeIDChanged;
-		instance.on('node.id.changed', nodeIDChanged = ({ iface, from, to }) => {
-			if(this._skipEvent) return;
+		instance.on('node.id.changed', nodeIDChanged = ({ iface, old, now }) => {
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = iface.node.instance.ifaceList;
 
 			let i = ifaceList.indexOf(iface);
 			let fid = getFunctionId(iface);
-			this._onSyncOut({w:'ins', t:'nidc', fid, i, f:from, to:to});
+			this._onSyncOut({w:'ins', t:'nidc', fid, i, f:old, to: now});
 		});
 
 		let portSplit;
 		instance.on('_port.split', portSplit = ({ port }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
@@ -171,7 +171,7 @@ class RemoteControl extends RemoteBase {
 
 		let portUnsplit;
 		instance.on('_port.unsplit', portUnsplit = ({ port }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
@@ -181,7 +181,7 @@ class RemoteControl extends RemoteBase {
 
 		let portDefaultChanged;
 		instance.on('port.default.changed', portDefaultChanged = ({ port }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
@@ -191,7 +191,7 @@ class RemoteControl extends RemoteBase {
 
 		let portResyncAllow;
 		instance.on('_port.resync.allow', portResyncAllow = ({ port }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
@@ -201,7 +201,7 @@ class RemoteControl extends RemoteBase {
 
 		let portResyncDisallow;
 		instance.on('_port.resync.disallow', portResyncDisallow = ({ port }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = port.iface.node.instance.ifaceList;
 			let i = ifaceList.indexOf(port.iface);
@@ -211,7 +211,7 @@ class RemoteControl extends RemoteBase {
 
 		let fnRenamePort;
 		instance.on('_fn.rename.port', fnRenamePort = ({ iface, which, fromName, toName }) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ifaceList = iface.node.instance.ifaceList;
 			let fid = getFunctionId(iface);
@@ -221,7 +221,7 @@ class RemoteControl extends RemoteBase {
 
 		let insVariableNew;
 		instance.on('variable.new', insVariableNew = (ev) => { // ref = BPVariable
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let ref = ev.reference;
 			let bpFunction = ev.bpFunction || ev.reference.bpFunction;
@@ -235,7 +235,7 @@ class RemoteControl extends RemoteBase {
 
 		let varRenamed;
 		instance.on('variable.renamed', varRenamed = (ev) => { // ref = BPVariable
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let bpFunction = ev.bpFunction || ev.reference.bpFunction;
 			if(bpFunction != null){
@@ -248,7 +248,7 @@ class RemoteControl extends RemoteBase {
 
 		let varDeleted;
 		instance.on('variable.deleted', varDeleted = (ev) => { // ref = BPVariable
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			let bpFunction = ev.bpFunction || ev.reference.bpFunction;
 			if(bpFunction != null){
@@ -261,84 +261,84 @@ class RemoteControl extends RemoteBase {
 
 		let insFunctionNew;
 		instance.on('function.new', insFunctionNew = ({ reference: ref }) => { // ref = BPFunction
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'cfn', id: ref.id, ti: ref.title, dsc: ref.description});
 		});
 
 		let funcRenamed;
 		instance.on('function.renamed', funcRenamed = (ev) => { // ref = BPFunction
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'frn', old: ev.old, now: ev.now});
 		});
 
 		let funcDeleted;
 		instance.on('function.deleted', funcDeleted = (ev) => { // ref = BPFunction
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'fdl', id: ev.id});
 		});
 
 		let eventCreated;
 		instance.on('event.created', eventCreated = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'cev', nm: ev.reference.namespace});
 		});
 
 		let eventRenamed;
 		instance.on('event.renamed', eventRenamed = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'evrn', old: ev.old, now: ev.now});
 		});
 
 		let eventDeleted;
 		instance.on('event.deleted', eventDeleted = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'evdl', id: ev.reference.id});
 		});
 
 		let eventFieldCreated;
 		instance.on('event.field.created', eventFieldCreated = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'evfcr', nm: ev.namespace, name: ev.name});
 		});
 
 		let eventFieldRenamed;
 		instance.on('event.field.renamed', eventFieldRenamed = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'evfrn', nm: ev.namespace, old: ev.old, now: ev.now});
 		});
 
 		let eventFieldDeleted;
 		instance.on('event.field.deleted', eventFieldDeleted = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'evfdl', nm: ev.namespace, name: ev.name});
 		});
 
 		let envAdded;
 		Blackprint.on('environment.added', envAdded = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'envadd', key: ev.key});
 		});
 
 		let envRenamed;
 		Blackprint.on('environment.renamed', envRenamed = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'envrn', old: ev.old, now: ev.now});
 		});
 
 		let envDeleted;
 		Blackprint.on('environment.deleted', envDeleted = (ev) => {
-			if(this._skipEvent) return;
+			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
 			this._onSyncOut({w:'ins', t:'envdl', key: ev.key});
 		});
@@ -606,20 +606,24 @@ class RemoteControl extends RemoteBase {
 			else if(data.t === 'ci'){
 				this._skipEvent = true;
 
-				if(data.d != null) this.emit('empty.json.import');
-				else {
-					let isEmptyInstance = true;
-					for (let key in data.d.instance) {
-						isEmptyInstance = false;
-						break;
-					}
+				if(await this.onImport() === true){
+					this._isImporting = true;
 
-					if(!isEmptyInstance){
-						instance.clearNodes();
-						console.log(data.d)
-						await instance.importJSON(data.d);
+					if(data.d != null) this.emit('empty.json.import');
+					else {
+						let isEmptyInstance = true;
+						for (let key in data.d.instance) {
+							isEmptyInstance = false;
+							break;
+						}
+
+						if(!isEmptyInstance){
+							instance.clearNodes();
+							await instance.importJSON(data.d);
+						}
+						else this.emit('empty.json.import');
 					}
-					else this.emit('empty.json.import');
+					this._isImporting = false;
 				}
 
 				this._skipEvent = false;
