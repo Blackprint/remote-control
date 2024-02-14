@@ -66,12 +66,20 @@ class RemoteControl extends RemoteBase {
 			});
 		});
 
+		let evNodeCreating, evNodeCreatePending = new Map();
+		instance.on('node.creating', evNodeCreating = ({ namespace }) => {
+			if(this._skipEvent || this.stopSync) return;
+			if(!evNodeCreatePending.has(namespace))
+				evNodeCreatePending.set(namespace, []);
+		});
+
 		let evNodeCreated;
 		instance.on('node.created', evNodeCreated = ev => {
 			if(this._skipEvent) return;
 			this.saveSketchToRemote();
 			let fid = getFunctionId(ev.iface);
 			let ifaceList = ev.iface.node.instance.ifaceList;
+			let namespace = ev.iface.namespace;
 
 			let exportedIface = instance.exportJSON({
 				ifaceList: [ev.iface],
@@ -81,7 +89,7 @@ class RemoteControl extends RemoteBase {
 				exportVariables: false,
 				exportEvents: false,
 				toRawObject: true,
-			}).instance[ev.iface.namespace][0];
+			}).instance[namespace][0];
 
 			if(this.isSketch){
 				instance.scope('nodes').deselectAll();
@@ -90,7 +98,7 @@ class RemoteControl extends RemoteBase {
 				this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
 					data: exportedIface.data,
 					fid,
-					nm: ev.iface.namespace,
+					nm: namespace,
 					x: ev.iface.x,
 					y: ev.iface.y,
 				});
@@ -98,8 +106,15 @@ class RemoteControl extends RemoteBase {
 			else this._onSyncOut({w:'nd', i:ifaceList.indexOf(ev.iface), t:'c',
 				data: exportedIface.data,
 				fid,
-				nm: ev.iface.namespace,
+				nm: namespace,
 			});
+
+			if(evNodeCreatePending.has(namespace)) {
+				let list = evNodeCreatePending.get(namespace);
+				evNodeCreatePending.delete(namespace);
+
+				for (let i=0; i < list.length; i++) this._onSyncOut(list);
+			}
 		});
 
 		let evNodeDelete;
@@ -119,7 +134,12 @@ class RemoteControl extends RemoteBase {
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
 			let fid = getFunctionId(ev.iface);
-			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null, t:'s'});
+			let evData = {w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null, t:'s'};
+
+			let namespace = ev.iface.namespace;
+			if(evNodeCreatePending.has(namespace))
+				evNodeCreatePending.get(namespace).push(evData);
+			else this._onSyncOut(evData);
 		});
 
 		let evModuleDelete;
@@ -347,6 +367,7 @@ class RemoteControl extends RemoteBase {
 			instance.off('json.imported', evJsonImported);
 			instance.off('cable.connect', evCableConnect);
 			instance.off('cable.disconnect', evCableDisconnect);
+			instance.off('node.creating', evNodeCreating);
 			instance.off('node.created', evNodeCreated);
 			instance.off('node.delete', evNodeDelete);
 			instance.off('_node.sync', evNodeSync);
