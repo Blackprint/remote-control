@@ -321,19 +321,19 @@ class RemoteSketch extends RemoteControl {
 
 		let instance = this.instance;
 		if(data.fid != null){
-			// Use the curent active function page
+			// Use the current active function page
 			let used = getDeepProperty(this.instance.functions, data.fid.split('/')).used;
 			for (var i=0; i < used.length; i++) {
-				instance = used[i].$el[0].closest('.page-current');
+				let temp = used[i];
+				instance = temp.$el?.[0].closest('.page-current');
 				if(instance != null){
-					instance = used[i].bpInstance;
+					instance = temp.bpInstance;
 					break;
 				}
 			}
 
 			if(i === used.length) instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0].bpInstance;
-			if(instance == null)
-				return this._resync('FunctionNode');
+			if(instance == null) return this._resync('FunctionNode');
 		}
 
 		let { ifaceList } = instance;
