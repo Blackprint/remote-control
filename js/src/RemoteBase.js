@@ -15,9 +15,13 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	// _onSyncOut(data){ this.onSyncOut(JSON.stringify(data)) }
 
 	_resync(which){
+		if(this.stopSync) return;
 		this.stopSync = true;
-		this.emit("need.sync", { unsynced: which });
-		this._skipEvent = false;
+
+		setTimeout(()=> {
+			this.emit("need.sync", { unsynced: which });
+			this._skipEvent = false;
+		}, 1000);
 	}
 
 	constructor(instance){
@@ -54,6 +58,47 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 				}
 			}
 		}
+
+		let evNodeCreatePending = this._evNodeCreatePending = new Map();
+		let evNodeCreating;
+		instance.on('node.creating', evNodeCreating = ({ namespace }) => {
+			// if(this._skipEvent || this.stopSync) return;
+			if(!evNodeCreatePending.has(namespace))
+				evNodeCreatePending.set(namespace, []);
+		});
+
+		let evNodeSync;
+		instance.on('_node.sync', evNodeSync = ev => { // internal node data sync
+			// if(this._skipEvent || this.stopSync) return;
+			let ifaceList = ev.iface.node.instance.ifaceList;
+			let fid = getFunctionId(ev.iface);
+			let evData = {w:'nd', t:'s', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null};
+
+			let namespace = ev.iface.namespace;
+			if(evNodeCreatePending.has(namespace))
+				evNodeCreatePending.get(namespace).push(evData);
+			else this._onSyncOut(evData);
+		});
+
+		let evNodeCreated;
+		instance.on('node.created', evNodeCreated = ev => {
+			let namespace = ev.iface.namespace;
+			if(evNodeCreatePending.has(namespace)) {
+				let list = evNodeCreatePending.get(namespace);
+				evNodeCreatePending.delete(namespace);
+
+				if(list.length === 0) return;
+				setTimeout(() => {
+					for (let i=0; i < list.length; i++) this._onSyncOut(list);
+				}, 1);
+			}
+		});
+
+		this._destroy1 = function(){
+			instance.off('node.creating', evNodeCreating);
+			instance.off('_node.sync', evNodeSync);
+			instance.off('node.created', evNodeCreated);
+		}
 	}
 
 	// ToDo: make custom library/CLI version to handle data relaying
@@ -70,8 +115,8 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 				that._RemoteJSON_Reject = null;
 			}
 
-			this._RemoteJSON_Respond = function(json){ resolve(json); cleanup(); }
-			this._RemoteJSON_Reject = function(){ reject(); cleanup(); };
+			this._RemoteJSON_Respond = function(json){ cleanup(); resolve(json); }
+			this._RemoteJSON_Reject = function(reason){ cleanup(); reject(reason); };
 			this._onSyncOut({w:'ins', t:'ajs'});
 		});
 	}
@@ -168,10 +213,11 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		// this.emit('_syncIn', data);
 
 		let instance = this.instance;
+		let bpFunctionInstance;
 		if(data.fid != null){
-			instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0]?.bpInstance;
-			if(instance == null)
-				return this._resync('FunctionNode');
+			bpFunctionInstance = getDeepProperty(this.instance.functions, data.fid.split('/'));
+			instance = bpFunctionInstance?.used[0]?.bpInstance;
+			if(instance == null) return this._resync('FunctionNode');
 		}
 
 		let { ifaceList } = instance;
@@ -204,7 +250,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					});
 				}
 				else {
-					getDeepProperty(this.instance.functions, data.fid.split('/')).createVariable(data.id, {
+					bpFunctionInstance.createVariable(data.id, {
 						title: data.ti,
 						description: data.dsc,
 						scope: data.scp
@@ -216,7 +262,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					this.instance.renameVariable(data.old, data.now, data.scp);
 				}
 				else {
-					getDeepProperty(this.instance.functions, data.fid.split('/')).renameVariable(data.old, data.now, data.scp);
+					bpFunctionInstance.renameVariable(data.old, data.now, data.scp);
 				}
 			}
 			else if(data.t === 'vdl'){ // variable.deleted
@@ -224,7 +270,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 					this.instance.deleteVariable(data.id, data.scp);
 				}
 				else {
-					getDeepProperty(this.instance.functions, data.fid.split('/')).deleteVariable(data.id, data.scp);
+					bpFunctionInstance.deleteVariable(data.id, data.scp);
 				}
 			}
 
@@ -261,7 +307,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 				this.instance.events.list[data.nm].used[0].deleteField(data.name);
 			}
 			else if(data.t === 'rajs'){
-				if(this._RemoteJSON_Respond == null) return this._skipEvent = false; // This instance was not requesting the data
+				if(this._RemoteJSON_Respond == null) return this._skipEvent = false; // This instance doesn't requesting the data
 
 				if(data.d != null) this._RemoteJSON_Respond(data.d);
 				else this._RemoteJSON_Reject(data.error ?? "Peer instance responsed with empty data");
@@ -280,6 +326,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 
 	destroy(){
 		this.disable();
+		this._destroy1();
 		delete this.instance._remote;
 	}
 	disable(){
@@ -290,6 +337,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 			this.onSyncIn = onSyncIn;
 			this.onSyncOut = onSyncOut;
 			this.disabled = false;
+			this.stopSync = false;
 			this._skipEvent = false;
 			this.emit('enabled');
 		}
@@ -298,6 +346,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		this.onSyncOut = ()=>{};
 		this.emit('disabled');
 		this.disabled = true;
+		this.stopSync = true;
 		this._skipEvent = true;
 	}
 

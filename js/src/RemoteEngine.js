@@ -76,14 +76,6 @@ class RemoteEngine extends RemoteBase {
 			});
 		});
 
-		let evNodeSync;
-		instance.on('_node.sync', evNodeSync = ev => { // internal node data sync
-			// if(this._skipEvent && !this._isImporting) return;
-			let fid = getFunctionId(ev.iface);
-			let ifaceList = ev.iface.node.instance.ifaceList;
-			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null, t:'s'})
-		});
-
 		let evError;
 		instance.on('error', evError = ev => {
 			if(this._skipEvent || this.stopSync) return;
@@ -100,12 +92,12 @@ class RemoteEngine extends RemoteBase {
 			instance.off('cable.disconnect', evCableDisconnect);
 			instance.off('execution.paused', evExecPaused);
 			instance.off('_flowEvent', evFlowEvent);
-			instance.off('_node.sync', evNodeSync);
 			instance.off('error', evError);
 			instance.off('execution.terminated', evExecutionTerminated);
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
+			super.destroy();
 		}
 	}
 
@@ -120,10 +112,11 @@ class RemoteEngine extends RemoteBase {
 		}
 
 		let instance = this.instance;
+		let bpFunctionInstance;
 		if(data.fid != null){
-			instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0]?.bpInstance;
-			if(instance == null)
-				return this._resync('FunctionNode');
+			bpFunctionInstance = getDeepProperty(this.instance.functions, data.fid.split('/'));
+			instance = bpFunctionInstance?.used[0]?.bpInstance;
+			if(instance == null) return this._resync('FunctionNode');
 		}
 
 		let { ifaceList } = instance;
@@ -281,8 +274,8 @@ class RemoteEngine extends RemoteBase {
 				this.jsonSyncTime = Date.now();
 			}
 			else if(data.t === 'sfns'){ // sync function structure
-				getDeepProperty(this.instance.functions, data.fid.split('/')).structure = data.d;
-				// getDeepProperty(this.instance.functions, data.fid.split('/')).structure = JSON.parse(data.d);
+				bpFunctionInstance.structure = data.d;
+				// bpFunctionInstance.structure = JSON.parse(data.d);
 			}
 			else if(data.t === 'sml') // sync module list
 				this._syncModuleList(data.d);
@@ -335,6 +328,18 @@ class RemoteEngine extends RemoteBase {
 				let iface = ifaceList[data.i];
 				if(iface == null) return this._resync("Node");
 				iface.output[data.k].allowResync = data.v;
+			}
+			else if(data.t === 'envadd'){
+				if(Blackprint.Environment.map.hasOwnProperty(data.key)) return;
+				console.log("Couldn't add environment variable from engine instance remotely, please do it manually");
+			}
+			else if(data.t === 'envrn'){
+				if(!Blackprint.Environment.map.hasOwnProperty(data.key)) return;
+				console.log("Couldn't rename environment variable from engine instance remotely, please do it manually");
+			}
+			else if(data.t === 'envdl'){
+				if(!Blackprint.Environment.map.hasOwnProperty(data.key)) return;
+				console.log("Couldn't delete environment variable from engine instance remotely, please do it manually");
 			}
 			else console.log(`Unrecognized event: ${data.w} -> type: ${data.t}`)
 		}

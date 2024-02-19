@@ -13,19 +13,21 @@ class RemoteControl extends RemoteBase {
 
 		let evJsonImporting;
 		instance.on('json.importing', evJsonImporting = ({ appendMode, raw }) => {
-			if(this._skipEvent || this.stopSync) return;
 			this._skipEvent = true;
+			if(this._skipEvent || this.stopSync) return;
+		});
+
+		let evJsonImported;
+		instance.on('json.imported', evJsonImported = ({ appendMode, raw }) => {
+			this._skipEvent = false;
+
+			if(this._skipEvent || this.stopSync) return;
 			this._onSyncOut({
 				w:'ins',
 				t:'jsonim',
 				app: appendMode,
 				raw,
 			});
-		});
-
-		let evJsonImported;
-		instance.on('json.imported', evJsonImported = ({ appendMode, raw }) => {
-			this._skipEvent = false;
 		});
 
 		let evCableConnect;
@@ -66,13 +68,6 @@ class RemoteControl extends RemoteBase {
 			});
 		});
 
-		let evNodeCreating, evNodeCreatePending = new Map();
-		instance.on('node.creating', evNodeCreating = ({ namespace }) => {
-			if(this._skipEvent || this.stopSync) return;
-			if(!evNodeCreatePending.has(namespace))
-				evNodeCreatePending.set(namespace, []);
-		});
-
 		let evNodeCreated;
 		instance.on('node.created', evNodeCreated = ev => {
 			if(this._skipEvent || this.stopSync) return;
@@ -108,13 +103,6 @@ class RemoteControl extends RemoteBase {
 				fid,
 				nm: namespace,
 			});
-
-			if(evNodeCreatePending.has(namespace)) {
-				let list = evNodeCreatePending.get(namespace);
-				evNodeCreatePending.delete(namespace);
-
-				for (let i=0; i < list.length; i++) this._onSyncOut(list);
-			}
 		});
 
 		let evNodeDelete;
@@ -125,21 +113,6 @@ class RemoteControl extends RemoteBase {
 
 			let fid = getFunctionId(ev.iface);
 			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), t:'d'})
-		});
-
-		let evNodeSync;
-		instance.on('_node.sync', evNodeSync = ev => { // internal node data sync
-			// if(this._skipEvent || this.stopSync) return;
-			this.saveSketchToRemote();
-			let ifaceList = ev.iface.node.instance.ifaceList;
-
-			let fid = getFunctionId(ev.iface);
-			let evData = {w:'nd', fid, i:ifaceList.indexOf(ev.iface), d: ev.data || null, t:'s'};
-
-			let namespace = ev.iface.namespace;
-			if(evNodeCreatePending.has(namespace))
-				evNodeCreatePending.get(namespace).push(evData);
-			else this._onSyncOut(evData);
 		});
 
 		let evModuleDelete;
@@ -367,7 +340,6 @@ class RemoteControl extends RemoteBase {
 			instance.off('json.imported', evJsonImported);
 			instance.off('cable.connect', evCableConnect);
 			instance.off('cable.disconnect', evCableDisconnect);
-			instance.off('node.creating', evNodeCreating);
 			instance.off('node.created', evNodeCreated);
 			instance.off('node.delete', evNodeDelete);
 			instance.off('_node.sync', evNodeSync);
@@ -398,6 +370,7 @@ class RemoteControl extends RemoteBase {
 
 			this.onSyncIn = ()=>{};
 			this.onSyncOut = ()=>{};
+			super.destroy();
 		}
 	}
 
@@ -451,10 +424,11 @@ class RemoteControl extends RemoteBase {
 		if(data == null) return;
 
 		let instance = this.instance;
+		let bpFunctionInstance;
 		if(data.fid != null){
-			instance = getDeepProperty(this.instance.functions, data.fid.split('/')).used[0]?.bpInstance;
-			if(instance == null)
-				return this._resync('FunctionNode');
+			bpFunctionInstance = getDeepProperty(this.instance.functions, data.fid.split('/'));
+			instance = bpFunctionInstance?.used[0]?.bpInstance;
+			if(instance == null) return this._resync('FunctionNode');
 		}
 
 		let { ifaceList } = instance;
@@ -642,7 +616,7 @@ class RemoteControl extends RemoteBase {
 				this._onSyncOut({w:'ins', t:'addrm', d: clazz._scopeURL, nm: namespace});
 			}
 			else if(data.t === 'askfns'){ // ask function structure
-				this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: getDeepProperty(instance.functions, data.fid.split('/')).structure});
+				this._onSyncOut({w:'ins', t:'sfns', fid: data.fid, d: bpFunctionInstance.structure});
 			}
 			else if(data.t === 'addrm')
 				this._answeredRemoteModule(data.nm, data.d);
