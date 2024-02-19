@@ -1,7 +1,7 @@
 {
   "name": "@blackprint/remote-control",
   "description": "Blackprint remote control",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "author": "Blackprint",
   "license": "MIT",
   "repository": {
@@ -12,6 +12,11 @@
     "url": "https://github.com/Blackprint/remote-control/issues"
   },
   "main": "dist/remote-control.min.js",
+  "scripts": {
+    "example-remote-engine": "node --loader ./../../engine-js/es6-https-loader.mjs ./example/remote-engine.mjs",
+    "example-relay-server": "node ./example/relay-server.js",
+    "test": "echo \"Not implemented\""
+  },
   "devDependencies": {
     "node-fetch": "^3.2.0",
     "socket.io": "^4.4.1"
