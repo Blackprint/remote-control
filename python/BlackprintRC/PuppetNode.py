@@ -20,6 +20,7 @@ nativeTypeList = [
 	[Blackprint.Types.Any, 'Any'],
 	[Blackprint.Types.Route, 'Route'],
 	[Blackprint.Types.Slot, 'Slot'],
+	[Blackprint.Types.Trigger, 'Trigger'],
 ]
 
 def getNativeType(type):
@@ -70,6 +71,12 @@ def getRegisteredNodes(options={}):
 					elif(feature == portTypes.Union): i = 5
 					elif(feature == portTypes.VirtualType): i = 6
 					temp['feature'] = i
+
+				if port['type'] is Blackprint.Types.Trigger:
+					temp['feature'] = 4
+			else:
+				if port is Blackprint.Types.Trigger:
+					temp['feature'] = 4
 
 			if(i != 5):
 				type = typeToString([
