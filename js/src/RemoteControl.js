@@ -13,21 +13,21 @@ class RemoteControl extends RemoteBase {
 
 		let evJsonImporting;
 		instance.on('json.importing', evJsonImporting = ({ appendMode, raw }) => {
+			if(this._skipEvent || this.stopSync) return;
 			this._skipEvent = true;
-			if(this._skipEvent || this.stopSync) return;
-		});
 
-		let evJsonImported;
-		instance.on('json.imported', evJsonImported = ({ appendMode, raw }) => {
-			this._skipEvent = false;
-
-			if(this._skipEvent || this.stopSync) return;
 			this._onSyncOut({
 				w:'ins',
 				t:'jsonim',
 				app: appendMode,
 				raw,
 			});
+		});
+
+		let evJsonImported;
+		instance.on('json.imported', evJsonImported = ({ appendMode, raw }) => {
+			this._skipEvent = false;
+			if(this._skipEvent || this.stopSync) return;
 		});
 
 		let evCableConnect;
@@ -418,7 +418,20 @@ class RemoteControl extends RemoteBase {
 	}
 
 	async onSyncIn(data){
-		if(data.w === 'skc') return data;
+		if(data.w === 'skc') {
+			if(data.t === 'puppetnode.reload'){
+				this._onSyncOut({w:'ins', t:'puppetnode.ask'});
+				return;
+			}
+
+			if(data.t === 'puppetnode.list'){
+				Blackprint.PuppetNode.setRegisteredNodes(data.d);
+				Blackprint.emit('bp_editorNodeAvailability');
+				return;
+			}
+
+			return data;
+		}
 
 		data = await super.onSyncIn(data);
 		if(data == null) return;
