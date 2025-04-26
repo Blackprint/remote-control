@@ -3,12 +3,11 @@ import zlib
 import json
 import types
 
-typeList = []
 typeContext = {'__virtualTypes': {}}
 nativeTypeList = [
 	[str, 'String'],
 	[int, 'Integer'],
-	[float, 'Number'],
+	[float, 'Float'],
 	[complex, 'Complex'],
 	[bool, 'Boolean'],
 	[dict, 'Object'],
@@ -28,6 +27,11 @@ def getNativeType(type):
 		if(x[0] == type): return x[1]
 	return None
 
+def getTypeFullName(cls):
+    if cls.__module__ == "builtins":
+        return cls.__qualname__
+    return f"{cls.__module__}.{cls.__qualname__}"
+
 # ToDo: port to PHP, Golang, and other programming languages
 def getRegisteredNodes(options={}):
 	nodes = Blackprint.Internal.nodes
@@ -41,15 +45,8 @@ def getRegisteredNodes(options={}):
 			portType = port['type'] if isinstance(port, dict) else port
 			nativeType = getNativeType(portType)
 
-			typeIndex = ''
-			if(nativeType == None):
-				typeIndex = typeList.index(portType) if typeList in typeList else -1
-				if(typeIndex == -1):
-					typeList.append(portType)
-					typeIndex = len(typeList) - 1
-
 			type = nativeType
-			if(type == None): type = portType.__name__ + "_" + str(typeIndex)
+			if(type == None): type = getTypeFullName(portType)
 
 			types.append(type)
 		
@@ -102,6 +99,7 @@ def getRegisteredNodes(options={}):
 
 				temp['type'] = item.type
 				temp['interfaceSync'] = item.interfaceSync
+				temp['interfaceDocs'] = item.interfaceDocs
 			elif(isinstance(item, dict)):
 				extract(item, namespace+key+"/")
 
