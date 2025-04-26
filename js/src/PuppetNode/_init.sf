@@ -172,7 +172,13 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			], multiple: false},
 			{type: "file_in", id: "file_in", tooltip: "File input"},
 			{type: "file_out", id: "file_out", tooltip: "File download", inline: true},
-			{type: "button_in", id: "button_in", tooltip: "Button input", text: 'Button', inline: true}, */
+			{type: "button_in", id: "button_in", tooltip: "Button input", text: 'Button', inline: true},
+
+			{type: "text_in", port_input: "StringField", default: "..."},
+			{type: "number_in", port_input: "IntegerField", default: 0},
+			{type: "checkbox_in", port_input: "BooleanField", default: true},
+			{type: "button_in", port_output: "TriggerField"},
+			*/
 		];
 	}
 	init(){
@@ -181,88 +187,141 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 
 		for (let i=0; i < sync.length; i++) {
 			let temp = sync[i];
-			if(!temp.id) throw new Error("Every 'interfaceSync' require an 'id', but one of the interface haven't been specified yet");
 
-			sf.Obj.set(_interfaces, temp.id, temp);
+			if(temp.id != null) {
+				sf.Obj.set(_interfaces, temp.id, temp);
 
-			if(temp.type === 'text_in'){
-				_interfaces.$el('textarea', temp.id).on('input', ev => {
-					this.syncOut(temp.id, ev.target.value);
-				});
-			}
-			else if(temp.type === 'picture_in'){
-				let el = _interfaces.$el('.img', temp.id);
-				el.on('dragover', ev => ev.preventDefault());
-				el.on('drop', ev => {
-					ev.preventDefault();
+				if(temp.type === 'text_in'){
+					_interfaces.$el('textarea', temp.id).on('input', ev => {
+						this.syncOut(temp.id, ev.target.value);
+					});
+				}
+				else if(temp.type === 'picture_in'){
+					let el = _interfaces.$el('.img', temp.id);
+					el.on('dragover', ev => ev.preventDefault());
+					el.on('drop', ev => {
+						ev.preventDefault();
 
-					let file = ev.dataTransfer.files[0];
-					if(!(file instanceof File))
-						throw new Error("Dropped item in this element was not a file");
+						let file = ev.dataTransfer.files[0];
+						if(!(file instanceof File))
+							throw new Error("Dropped item in this element was not a file");
 
-					this._encodeFile(file).then(v => {
-						this.syncOut(temp.id, { url: 'data:image;base64,'+btoa(v) });
+						this._encodeFile(file).then(v => {
+							this.syncOut(temp.id, { url: 'data:image;base64,'+btoa(v) });
+						});
+
+						let FR = new FileReader();
+						FR.addEventListener("load", ev => el.find('img')[0].src = ev.target.result); 
+						FR.readAsDataURL(file);
+					});
+				}
+				else if(temp.type === 'checkbox_in'){
+					_interfaces.$el('input', temp.id).on('input', ev => {
+						this.syncOut(temp.id, ev.target.checked);
+					});
+				}
+				else if(temp.type === 'dropdown_in'){
+					let el = _interfaces.$el('select', temp.id);
+					el.on('input', ev => {
+						this.syncOut(temp.id, {selected: [...ev.target.selectedOptions].map(v => v.value)});
 					});
 
-					let FR = new FileReader();
-					FR.addEventListener("load", ev => el.find('img')[0].src = ev.target.result); 
-					FR.readAsDataURL(file);
-				});
-			}
-			else if(temp.type === 'checkbox_in'){
-				_interfaces.$el('input', temp.id).on('input', ev => {
-					this.syncOut(temp.id, ev.target.checked);
-				});
-			}
-			else if(temp.type === 'dropdown_in'){
-				let el = _interfaces.$el('select', temp.id);
-				el.on('input', ev => {
-					this.syncOut(temp.id, {selected: [...ev.target.selectedOptions].map(v => v.value)});
-				});
+					let options = temp.options;
+					for (let i=0; i < options.length; i++) {
+						let item = options[i];
+						el.append(`<option value="${$.escapeText(item.id)}">${$.escapeText(item.text)}</option>`);
+					}
+				}
+				else if(temp.type === 'file_in'){
+					_interfaces.$el('input', temp.id).on('input', ev => {
+						Promise.all([...ev.target.files].map(v => this._encodeFile(v))).then(v => {
+							this.syncOut(temp.id, { data: v });
+						});
+					});
+				}
+				else if(temp.type === 'file_out'){
+					let el = _interfaces.$el('button', temp.id);
+					el.on('click', ev => {
+						let fileData = el[0].fileData;
+						if(fileData == null)
+							throw new Error("No downloadable content");
 
-				let options = temp.options;
-				for (let i=0; i < options.length; i++) {
-					let item = options[i];
-					el.append(`<option value="${$.escapeText(item.id)}">${$.escapeText(item.text)}</option>`);
+						let blob = new Blob([fileData], { type: 'application/octet-stream' });
+
+						let temp = document.createElement('a');
+						temp.href = URL.createObjectURL(blob);
+						temp.download = temp.filename || 'file';
+						temp.style = 'display:none';
+						document.body.appendChild(temp);
+						temp.target = '_blank';
+						temp.click();
+						temp.remove();
+
+						setTimeout(()=> URL.revokeObjectURL(temp.href), 10000);
+					});
+				}
+				else if(temp.type === 'button_in'){
+					_interfaces.$el('button', temp.id)
+						.on('pointerdown', ev => {
+							this.syncOut(temp.id, {press: true});
+						})
+						.on('pointerup', ev => {
+							this.syncOut(temp.id, {press: false});
+						});
 				}
 			}
-			else if(temp.type === 'file_in'){
-				_interfaces.$el('input', temp.id).on('input', ev => {
-					Promise.all([...ev.target.files].map(v => this._encodeFile(v))).then(v => {
-						this.syncOut(temp.id, { data: v });
-					});
-				});
-			}
-			else if(temp.type === 'file_out'){
-				let el = _interfaces.$el('button', temp.id);
-				el.on('click', ev => {
-					let fileData = el[0].fileData;
-					if(fileData == null)
-						throw new Error("No downloadable content");
+			else if(temp.port_input != null || temp.port_output != null) {
+				let type;
+				let componentName;
 
-					let blob = new Blob([fileData], { type: 'application/octet-stream' });
+				if(temp.type === 'button_in') { type = Function; componentName = 'comp-port-button'; }
+				else if(temp.type === 'text_in') { type = String; componentName = 'comp-port-textarea'; }
+				else if(temp.type === 'string_in') { type = String; componentName = 'comp-port-input'; }
+				else if(temp.type === 'number_in') { type = Number; componentName = 'comp-port-input'; }
+				else if(temp.type === 'checkbox_in') { type = Boolean; componentName = 'comp-port-input'; }
+				else throw new Error(`Type "${temp.type}" is not supported`);
 
-					let temp = document.createElement('a');
-					temp.href = URL.createObjectURL(blob);
-					temp.download = temp.filename || 'file';
-					temp.style = 'display:none';
-					document.body.appendChild(temp);
-					temp.target = '_blank';
-					temp.click();
-					temp.remove();
+				let port;
+				if(temp.port_input != null) port = this.input[temp.port_input];
+				else if(temp.port_output != null) port = this.output[temp.port_output];
 
-					setTimeout(()=> URL.revokeObjectURL(temp.href), 10000);
-				});
+				let data = {
+					id: temp.port_input || temp.port_output,
+					which: temp.port_input ? 'input' : 'output',
+					call: type === Function ? 0 : -1,
+				};
+
+				let item = port._boxInput = {
+					value: temp.default,
+					inline: temp.inline,
+					visible: port.cables.length === 0,
+					type,
+				};
+
+				if(type === Function){
+					item.onClick = ev => {
+						data.call = 1;
+						this.syncOut('bp_port_default', data);
+					}
+				}
+				else {
+					let debouncer = ()=> {
+						if(type !== Function) data.value = port.default;
+						this.syncOut('bp_port_default', data);
+					};
+
+					let _debounce;
+					item.whenChanged = (now) => {
+						clearTimeout(_debounce);
+						_debounce = setTimeout(debouncer, 700);
+						return port.default = now;
+					};
+				}
+
+				port.insertComponent(null, componentName, item);
+				port._hasComponent = false; // reset the flag as this was internal component
 			}
-			else if(temp.type === 'button_in'){
-				_interfaces.$el('button', temp.id)
-					.on('pointerdown', ev => {
-						this.syncOut(temp.id, {press: true});
-					})
-					.on('pointerup', ev => {
-						this.syncOut(temp.id, {press: false});
-					});
-			}
+			else throw new Error("Every 'interfaceSync' require an 'id' or 'port_input' or 'port_output', but one of the interface haven't been specified yet");
 		}
 	}
 	async _encodeFile(file){
