@@ -273,6 +273,9 @@ class RemoteEngine extends RemoteBase {
 				this.jsonTemp = data.d;
 				this.jsonSyncTime = Date.now();
 			}
+			else if(data.t === 'puppetnode.ask'){ // send puppetnode list
+				this._onSyncOut({w:'skc', t:'puppetnode.list', d: Blackprint.PuppetNode.getRegisteredNodes()});
+			}
 			else if(data.t === 'sfns'){ // sync function structure
 				bpFunctionInstance.structure = data.d;
 				// bpFunctionInstance.structure = JSON.parse(data.d);

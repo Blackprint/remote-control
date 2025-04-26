@@ -4,6 +4,7 @@ import Blackprint
 from .RemoteBase import RemoteBase
 from .Node import BpSyncOut
 from .utils import getFunctionId
+from .PuppetNode import getRegisteredNodes
 import datetime
 
 # ToDo: port to PHP, Golang, and other programming languages
@@ -108,6 +109,8 @@ class RemoteEngine(RemoteBase):
 			ifaceInput = ifaceList[inp['i']]
 			ifaceOutput = ifaceList[out['i']]
 
+			if(ifaceInput == None or ifaceOutput == None): return this._resync('Cable')
+
 			if(data['t'] == 'c'): # connect
 				this._skipEvent = True
 				inputPort = None
@@ -169,7 +172,16 @@ class RemoteEngine(RemoteBase):
 
 				node._syncronizing = True
 				for key, value in temp.items():
-					node.syncIn(key, value)
+					if(key == 'bp_port_default'):
+						if(value['which'] == 'input'):
+							if(value['call'] != -1): node.input[value['id']]()
+							else:
+								iface.input[value['id']].default = value['value']
+								node.update(None)
+								node.routes.routeOut()
+						if(value['which'] == 'output'):
+							if(value['call'] != -1): node.output[value['id']]()
+					else: node.syncIn(key, value)
 
 				node._syncronizing = False
 			elif(data['t'] == 'c'): # created
@@ -225,6 +237,8 @@ class RemoteEngine(RemoteBase):
 			elif(data['t'] == 'ssk'): # save sketch json
 				this.jsonTemp = data['d']
 				this.jsonSyncTime = int(datetime.datetime.utcnow().timestamp()*1000)
+			elif(data['t'] == 'puppetnode.ask'): # send puppetnode list
+				this._onSyncOut({'w':'skc', 't':'puppetnode.list', 'd': getRegisteredNodes()})
 			elif(data['t'] == 'sfns'): # sync function structure
 				this.instance.functions[data['fid']].structure = data['d']
 				# this.instance.functions[data['fid']].structure = JSON.parse(data['d'])

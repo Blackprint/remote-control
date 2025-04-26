@@ -53,10 +53,6 @@ io.on('connection', client => {
 	client.on('relay', data => remote.onSyncIn(data));
 	remote.onSyncOut = data => client.emit('relay', data);
 
-	client.on('puppetnode.ask', async () => {
-		client.emit('puppetnode.answer', await Blackprint.PuppetNode.getRegisteredNodes());
-	});
-
 	console.log('Remote control: connected');
 	client.on('disconnect', () => {
 		console.log('Remote control: disconnected');

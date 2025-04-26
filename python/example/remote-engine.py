@@ -1,3 +1,4 @@
+import Blackprint.ModuleLoader
 from aiohttp import web
 import asyncio
 import socketio
@@ -5,8 +6,9 @@ import BlackprintRC
 import Blackprint
 import datetime
 
-# Download from https://github.com/Blackprint/engine-python/tree/main/example/BPNode
-import BPNode # Register our nodes from BPNode folder
+import os
+ignore_directory = { 'Blender' }
+Blackprint.ModuleLoader.AddModulePathHotReload(os.path.dirname(__file__) + '/BPNode', lambda path: remote.notifyPuppetNodeListReload({'file': path}), ignore_directory)
 
 instance = Blackprint.Engine()
 remote = BlackprintRC.RemoteEngine(instance)
@@ -40,7 +42,7 @@ sio = socketio.AsyncServer(cors_allowed_origins='*')
 app = web.Application()
 sio.attach(app)
 
-engineStartup = int(datetime.datetime.utcnow().timestamp()*1000)
+engineStartup = int(datetime.datetime.now().timestamp()*1000)
 loop = None
 
 @sio.event
@@ -48,17 +50,18 @@ async def connect(sid, environ):
 	global loop
 	if(loop == None): loop = asyncio.get_running_loop()
 
-	remote.onSyncOut = lambda data: loop.create_task(sio.emit('relay', data, room=sid))
+	remote.onSyncOut = lambda data: asyncio.run_coroutine_threadsafe(sio.emit('relay', data, room=sid), loop)
 	await sio.emit('startup-time', engineStartup, room=sid)
+	remote.notifyPuppetNodeListReload()
 	print('Remote control: connected', sid)
 
 @sio.event
 async def relay(sid, data):
-	remote.onSyncIn(data)
-
-@sio.on('puppetnode.ask')
-async def puppetNodeAsk(sid):
-	await sio.emit('puppetnode.answer', BlackprintRC.PuppetNode.getRegisteredNodes(), room=sid)
+	try:
+		remote.onSyncIn(data)
+	except Exception as e:
+		import traceback
+		traceback.print_exception(type(e), e, e.__traceback__)
 
 @sio.event
 def disconnect(sid):

@@ -5,6 +5,7 @@ class RemoteBase(Blackprint.CustomEvent):
 	# False => block
 	def onImport(this, json): return False
 	def onModule(this, urls): return False
+	disabled = False
 
 	# "onSyncOut" function need to be replaced and the data need to be send to remote client
 	def onSyncOut(this, data): 1
@@ -44,6 +45,9 @@ class RemoteBase(Blackprint.CustomEvent):
 	def _syncModuleList(this, urls):
 		pass
 		# raise Exception("Can't sync module list as Python doesn't load module from URL")
+
+	def notifyPuppetNodeListReload(this, data={}):
+		this._onSyncOut({'w': 'skc', 't': 'puppetnode.reload', 'd': data})
 
 	def _syncInWaitContinue(this):
 		temp = this._syncInWait
