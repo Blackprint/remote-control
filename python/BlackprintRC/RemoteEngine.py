@@ -141,6 +141,14 @@ class RemoteEngine(RemoteBase):
 				inputPort.connectPort(outputPort)
 				this._skipEvent = False
 				return
+			
+			if(data['t'] == 'd'): # route cable disconnect
+				if(inp['s'] == 'route'):
+					this._skipEvent = True
+					if(ifaceOutput.node.routes.out != None):
+						ifaceOutput.node.routes.out.disconnect()
+					this._skipEvent = False
+					return
 
 			cables = getattr(ifaceInput, inp['s'])[inp['n']].cables
 			cable = None

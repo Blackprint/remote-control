@@ -162,6 +162,15 @@ class RemoteEngine extends RemoteBase {
 				return;
 			}
 
+			if(data.t === 'd'){ // route cable disconnect
+				if(inp.s === 'route'){
+					this._skipEvent = true;
+					ifaceOutput.node.routes.out?.disconnect()
+					this._skipEvent = false;
+					return
+				}
+			}
+
 			let cables = ifaceInput[inp.s][inp.n].cables;
 			let cable;
 			for (var i = 0; i < cables.length; i++) {

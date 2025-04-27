@@ -53,6 +53,7 @@ class RemoteControl extends RemoteBase {
 		instance.on('cable.disconnect', evCableDisconnect = ({ cable }) => {
 			if(cable._evDisconnected || this._skipEvent || this.stopSync) return;
 			let ci = this.isSketch ? instance.scope('cables').list.indexOf(cable) : -1;
+			let iER = cable.isRoute; // isEdgeRoute
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
@@ -62,8 +63,8 @@ class RemoteControl extends RemoteBase {
 				w:'c',
 				ci,
 				fid,
-				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
-				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
+				inp:{i: ifaceList.indexOf(cable.input.iface), s: iER ? 'route' : cable.input.source, n: cable.input.name || ''},
+				out:{i: ifaceList.indexOf(cable.output.iface), s: iER ? 'route' : cable.output.source, n: cable.output.name || ''},
 				t:'d'
 			});
 		});
