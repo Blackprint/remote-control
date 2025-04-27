@@ -180,13 +180,32 @@ Blackprint.PuppetNode = {
 				static output = ports.output;
 				static type = node.type;
 				static interfaceSync = node.interfaceSync;
+				static interfaceDocs = node.interfaceDocs;
 
 				constructor(instance){
 					super(instance);
-					this.setInterface("BPIC/BPRemote/PuppetNode");
-					this.iface.title = title;
-					this.iface.description = namespace;
-					this.iface.extension = node.extension;
+					let iface = this.setInterface("BPIC/BPRemote/PuppetNode");
+					iface.title = node.interfaceDocs?.title ?? title;
+					iface.description = node.interfaceDocs?.summary ?? namespace;
+					iface.extension = node.extension;
+
+					if(node.interfaceDocs != null){
+						let docs = node.interfaceDocs;
+						iface.docs = {};
+						iface.docs.description = docs.description;
+
+						Promise.resolve(true).then(() => {
+							let input = iface.docs.input = {};
+							for (let key in docs.input) {
+								iface.input[key].docs = input[key] = { description: docs.input[key] };
+							}
+	
+							let output = iface.docs.output = {};
+							for (let key in docs.output) {
+								iface.output[key].docs = output[key] = { description: docs.input[key] };
+							}
+						});
+					}
 				}
 				update(){}
 				syncIn(id, data){ this.iface.syncIn(id, data) }

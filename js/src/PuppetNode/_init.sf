@@ -11,7 +11,7 @@
 			<sf-template path="Blackprint/nodes/template/output-port.sf"></sf-template>
 		</div>
 
-		<div class="section-split" style="{{ interfaceSync.length ? '' : 'display: none' }}"></div>
+		<div class="section-split" style="{{ hasInterfaceContent ? '' : 'display: none' }}"></div>
 
 		<div class="container">
 			<div sf-each="val in _interfaces" class="{{ val.type }}" style="display: {{ val.inline ? 'inline-block' : 'block' }}">
@@ -157,6 +157,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 	constructor(node){
 		super(node);
 		this._interfaces = {};
+		this.hasInterfaceContent = false;
 
 		// text_out, text_in, picture_out, picture_in, file_out, file_in, button_in
 		this.interfaceSync = node.constructor.interfaceSync || [
@@ -190,6 +191,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 
 			if(temp.id != null) {
 				sf.Obj.set(_interfaces, temp.id, temp);
+				this.hasInterfaceContent = true;
 
 				if(temp.type === 'text_in'){
 					_interfaces.$el('textarea', temp.id).on('input', ev => {
