@@ -1,4 +1,5 @@
 let typeList = [];
+let generatedTypes = Object.create(null);
 let typeContext = {__virtualTypes: {}};
 let nativeTypeList = new Map([
 	[String, {name: 'String'}],
@@ -150,7 +151,11 @@ Blackprint.PuppetNode = {
 					else if(temp.type === 'Route') type = Blackprint.Types.Route;
 					else if(temp.type === 'Slot') type = Blackprint.Types.Slot;
 					else {
-						type = Blackprint.Port.VirtualType(Object, temp.type, typeContext);
+						type = generatedTypes[temp.type];
+						if(type == null) {
+							let clazz = type = generatedTypes[temp.type] = class {};
+							Object.defineProperty(clazz, 'name', {value: temp.type});
+						}
 					}
 
 					if(temp.feature) {
