@@ -29,6 +29,12 @@
 					{[ <div class="img"><div class="label">{{ val.placeholder || "Drag and drop picture here..." }}</div><img title="{{ val.tooltip || '' }}"></img></div> ]};
 				else if(val.type === 'picture_out')
 					{[ <div class="img"><div class="label">{{ val.placeholder || "Picture will be displayed here..." }}</div><img title="{{ val.tooltip || '' }}"></img></div> ]};
+				else if(val.type === 'media_out')
+					{[ <div class="media">
+						<img style="display: none" title="{{ val.tooltip || '' }}"></img>
+						<video style="display: none" title="{{ val.tooltip || '' }}" controls></video>
+						<audio style="display: none" title="{{ val.tooltip || '' }}" controls></audio>
+					</div> ]};
 				else if(val.type === 'checkbox_in')
 					{[ <input type="checkbox" title="{{ val.tooltip || '' }}"></input> ]};
 				else if(val.type === 'led_out')
@@ -91,6 +97,16 @@ sf-space[blackprint] bpic-bpremote-PuppetNode .node {
 	}
 	input {
 		vertical-align: middle;
+	}
+	.media{
+		img, video, audio{
+			max-width: 100%;
+			max-height: 250px;
+			text-align: center;
+			justify-self: center;
+			position: relative;
+			vertical-align: -webkit-baseline-middle;
+		}
 	}
 	.img{
 		position: relative;
@@ -157,6 +173,9 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 	constructor(node){
 		super(node);
 		this._interfaces = {};
+		this.data = {
+			optional_out: {},
+		};
 		this.hasInterfaceContent = false;
 
 		// text_out, text_in, picture_out, picture_in, file_out, file_in, button_in
@@ -165,6 +184,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			{type: "text_in", id: "input", placeholder: "Type text here..."},
 			{type: "picture_out", id: "pic_out", tooltip: "Picture preview"},
 			{type: "picture_in", id: "pic_in", tooltip: "Picture input"},
+			{type: "media_out", id: "media_out", tooltip: "Media preview", optional: true},
 			{type: "checkbox_in", id: "checkbox_in", tooltip: "Enable/disable"},
 			{type: "led_out", id: "led_out", tooltip: "Status indicator", inline: true},
 			{type: "dropdown_in", id: "dropdown_in", tooltip: "List selection", options: [
@@ -185,6 +205,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 	init(){
 		let sync = this.interfaceSync;
 		let _interfaces = this._interfaces;
+		let optional_out = this.data.optional_out;
 
 		for (let i=0; i < sync.length; i++) {
 			let temp = sync[i];
@@ -192,6 +213,12 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			if(temp.id != null) {
 				sf.Obj.set(_interfaces, temp.id, temp);
 				this.hasInterfaceContent = true;
+
+				if(temp.optional === true) {
+					let enabled = optional_out[temp.id] ??= false;
+					if(enabled) this.node.syncOut(temp.id, {request: true});
+					_interfaces.$el(temp.id).css('display', enabled ? '' : 'none');
+				}
 
 				if(temp.type === 'text_in'){
 					_interfaces.$el('textarea', temp.id).on('input', ev => {
@@ -325,6 +352,26 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			}
 			else throw new Error("Every 'interfaceSync' require an 'id' or 'port_input' or 'port_output', but one of the interface haven't been specified yet");
 		}
+
+		this.on('node.menu', ev => {
+			let switchOptional = id => {
+				let enabled = optional_out[id] ??= false;
+				enabled = optional_out[id] = !enabled;
+
+				if(enabled) this.syncOut(id, {request: enabled});
+				_interfaces.$el(id).css('display', enabled ? '' : 'none');
+			}
+
+			let deep = [];
+			for (let key in optional_out) {
+				deep.push({ title: (optional_out[key] ? 'Disable: ' : 'Enable: ') + key, callback(){ switchOptional(key) } });
+			}
+
+			if(deep.length !== 0) ev.menu.push({
+				title: "Remote Preview",
+				deep
+			});
+		});
 	}
 	async _encodeFile(file){
 		file = await file.arrayBuffer();
@@ -345,6 +392,32 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			this._interfaces.$el('textarea', id).val(data);
 		else if(item.type === 'picture_out')
 			this._interfaces.$el('img', id).attr('src', data.url);
+		else if(item.type === 'media_out'){ // ToDo: Optimize performance for code below
+			let img = this._interfaces.$el('img', id);
+			let video = this._interfaces.$el('video', id);
+			let audio = this._interfaces.$el('audio', id);
+			URL.revokeObjectURL(img.attr('src'));
+			URL.revokeObjectURL(video.attr('src'));
+			URL.revokeObjectURL(audio.attr('src'));
+
+			let url = URL.createObjectURL(new Blob([data.data], { type: data.mimeType }));
+			if(data.mimeType.startsWith('image/')){
+				img.attr('src', url).css('display', 'block');
+				video.css('display', 'none');
+				audio.css('display', 'none');
+			}
+			else if(data.mimeType.startsWith('video/')){
+				video.attr('src', url).css('display', 'block');
+				img.css('display', 'none');
+				audio.css('display', 'none');
+			}
+			else if(data.mimeType.startsWith('audio/')){
+				audio.attr('src', url).css('display', 'block');
+				img.css('display', 'none');
+				video.css('display', 'none');
+			}
+			else URL.revokeObjectURL(url);
+		}
 		else if(item.type === 'checkbox_in')
 			this._interfaces.$el('input', id)[0].checked = data.active;
 		else if(item.type === 'dropdown_in'){
