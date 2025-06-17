@@ -205,6 +205,39 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		if(this._syncInWait.length === 0)
 			this._syncInWait = null;
 	}
+	
+	nodeSyncOut(node, id, data='', force=false){
+		let instance = node.instance.rootInstance || node.instance;
+		if(instance._remote == null || (!force && node._syncronizing) || instance.syncDataOut === false)
+			return;
+
+		if(id.toUpperCase == null)
+			throw new Error("syncOut's ID must be a string, but got: "+ id);
+
+		let char = id.slice(0, 1);
+		if(char === '_' || char === '$'){
+			throw new Error("syncOut's ID can't be started with '_' or '$' character as it's assumed as a private field, but got: "+ id);
+		}
+
+		if(node.syncThrottle !== 0){
+			clearTimeout(node._syncHasWait);
+			node._syncHasWait = setTimeout(() => {
+				if(node._syncHasWait)
+					instance.emit('_node.sync', {
+						iface: node.iface,
+						data: clearPrivateField(node._syncWait)
+					});
+
+				node._syncWait = null;
+			}, node.syncThrottle);
+
+			if(node._syncWait == null)
+				node._syncWait = {};
+
+			node._syncWait[id] = data;
+		}
+		else instance.emit('_node.sync', {iface: node.iface, data: clearPrivateField({ [id]: data })});
+	}
 
 	async onSyncIn(data){
 		if(data.w === 'skc') return;
@@ -389,4 +422,35 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		this._onSyncOut({w:'ins', t:'askrm', nm: namespace});
 		return temp.promise;
 	}
+}
+
+function clearPrivateField(obj){
+	if(obj == null) return obj;
+
+	if(obj instanceof Array){
+		let temp = obj.slice(0);
+		for (var i = 0; i < temp.length; i++) {
+			let ref = temp[i];
+
+			if(typeof ref === 'object')
+				temp[i] = clearPrivateField(ref);
+		}
+
+		return temp;
+	}
+
+	let temp = {};
+	for(let key in obj){
+		let char = key.slice(0, 1);
+		if(char === '_' || char === '$')
+			continue;
+
+		let ref = obj[key];
+
+		if(typeof ref === 'object')
+			temp[key] = clearPrivateField(ref);
+		else temp[key] = ref;
+	}
+
+	return temp;
 }
