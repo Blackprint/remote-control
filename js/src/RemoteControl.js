@@ -597,7 +597,7 @@ class RemoteControl extends RemoteBase {
 				if(await this.onImport() === true){
 					this._isImporting = true;
 
-					if(data.d != null) this.emit('empty.json.import');
+					if(data.d == null) this.emit('empty.json.import');
 					else {
 						let isEmptyInstance = true;
 						for (let key in data.d.instance) {
