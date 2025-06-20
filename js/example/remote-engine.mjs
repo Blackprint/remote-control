@@ -1,4 +1,5 @@
-// node --no-warnings --loader ../../engine-js/es6-https-loader.mjs ./example/remote-engine.mjs
+// bun run --preload ../../../engine-js/bun-loader.mjs ./remote-engine.mjs
+// node --enable-source-maps --import ../../../engine-js/nodejs-loader.js ./remote-engine.mjs
 
 // Comment this if you want to use published version of the module
 import '../../../dist/engine.min.js';
@@ -12,7 +13,6 @@ import { Server } from "socket.io";
 
 globalThis.window = globalThis;
 globalThis.fetch = await import('node-fetch');
-globalThis.crypto = (await import('crypto')).webcrypto;
 
 let port = 2345;
 let httpServer = createServer();
