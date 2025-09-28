@@ -1,0 +1,23 @@
+name = "blackprint/remote_control"
+version = "0.1.0"
+authors = ["Blackprint"]
+license = "MIT"
+includes = [
+  "pesde.toml",
+  "README.md",
+  "LICENSE",
+  "dist/*.lua",
+]
+
+[target]
+environment = "lune"
+lib = "dist/BlackprintRC.lua"
+
+[indices]
+default = "https://github.com/pesde-pkg/index"
+
+[wally_indices]
+default = "https://github.com/UpliftGames/wally-index"
+
+[dependencies]
+socketio_client = { name = "stefansarya/socketio_client", version = "^0.1.0" }

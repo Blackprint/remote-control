@@ -1,0 +1,9 @@
+{
+	"scripts": {
+		"start": "node ./tools/bundler.js ./src ./dist/BlackprintRC.lua",
+		"compile": "node ./tools/bundler.js ./src ./dist/BlackprintRC.lua --compile",
+		"socketio-lune": "lune run ./example/socketio_example.lua",
+		"luau": "luau ./example/simple.lua"
+	},
+	"dependencies":{"chokidar":"^4.0.3"}
+}
