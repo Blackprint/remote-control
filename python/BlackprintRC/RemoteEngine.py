@@ -2,7 +2,6 @@
 
 import Blackprint
 from .RemoteBase import RemoteBase
-from .Node import BpSyncOut
 from .utils import getFunctionId
 from .PuppetNode import getRegisteredNodes
 import datetime
@@ -83,10 +82,8 @@ class RemoteEngine(RemoteBase):
 
 		this.destroy = destroy
 
-	def BpSyncOut(this, node, id: str, data=''):
-		return BpSyncOut(node, id, data)
-
 	def onSyncIn(this, data: dict, _parsed=False): # async
+		if(this._skipEvent): return # Skip incoming event until this flag set to false
 		if(not _parsed):
 			data = RemoteBase.onSyncIn(this, data)
 
@@ -141,7 +138,7 @@ class RemoteEngine(RemoteBase):
 				inputPort.connectPort(outputPort)
 				this._skipEvent = False
 				return
-			
+
 			if(data['t'] == 'd'): # route cable disconnect
 				if(inp['s'] == 'route'):
 					this._skipEvent = True
@@ -209,6 +206,7 @@ class RemoteEngine(RemoteBase):
 					newIface = instance.createNode(namespace, data)
 				finally:
 					this._skipEvent = False
+					this._syncInWaitContinue()
 
 				if(ifaceList.index(newIface) != data['i']):
 					return this._resync('Node')
@@ -234,11 +232,12 @@ class RemoteEngine(RemoteBase):
 
 				if(this.onImport() == True):
 					this._isImporting = True
-					this._skipEvent = True
-					this.emit('sketch.import', {'data': data['d']})
-					instance.importJSON(data['d'])
-					this.emit('sketch.imported', {'data': data['d']})
-					this._skipEvent = False
+					instance.clearNodes()
+					if(data['d'] == None): this.emit('empty.json.import')
+					else:
+						this.emit('sketch.import', {'data': data['d']})
+						instance.importJSON(data['d'])
+						this.emit('sketch.imported', {'data': data['d']})
 					this._isImporting = False
 
 				this._skipEvent = False
@@ -282,7 +281,7 @@ class RemoteEngine(RemoteBase):
 			elif(data['t'] == 'jsonim'):
 				this._skipEvent = True
 				try:
-					instance.importJSON(data['raw'], {
+					instance.importJSON(data['data'], {
 						'appendMode': data['app'] if 'app' in data else False
 					})
 				finally:

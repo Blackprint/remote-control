@@ -1,9 +1,9 @@
 from threading import Timer
 
-def BpSyncOut(this, id: str, data=''):
-	instance = this.instance._mainInstance or this.instance
+def BpSyncOut(this, id: str, data='', force=False):
+	instance = this.instance.rootInstance or this.instance
 
-	if(instance._remote == None or this._syncronizing or instance.syncDataOut == False):
+	if(instance._remote == None or (not force and this._syncronizing) or instance.syncDataOut == False):
 		return
 
 	char = id[0]

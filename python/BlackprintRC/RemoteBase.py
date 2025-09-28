@@ -1,4 +1,5 @@
 import Blackprint
+from .Node import BpSyncOut
 
 class RemoteBase(Blackprint.CustomEvent):
 	# True  => allow
@@ -35,6 +36,11 @@ class RemoteBase(Blackprint.CustomEvent):
 				instance._remote = [instance._remote, this]
 
 	def importRemoteJSON(this):
+		# Remove the listener after get respond/reject
+		def remove(): this._RemoteJSON_Respond = this._RemoteJSON_Reject = None
+		this._RemoteJSON_Respond = lambda data: remove() or this.instance.importJSON(data)
+		this._RemoteJSON_Reject = lambda err: remove() or print(err)
+
 		this._onSyncOut({'w': 'ins', 't': 'ajs'})
 
 	_sMLPending = False
@@ -58,7 +64,11 @@ class RemoteBase(Blackprint.CustomEvent):
 
 		this._syncInWait = None
 
+	def nodeSyncOut(this, node, id: str, data='', force=False):
+		return BpSyncOut(node, id, data, force)
+
 	def onSyncIn(this, data: dict):
+		if(this._skipEvent): return # Skip incoming event until this flag set to false
 		if(data['w'] == 'skc'): return
 
 		# data = JSON.parse(data)
@@ -102,11 +112,45 @@ class RemoteBase(Blackprint.CustomEvent):
 						'description': data['dsc'],
 						'scope': data['scp']
 					})
+			elif(data['t'] == 'vrn'): # variable.renamed
+				if(data['scp'] == Blackprint.VarScope.Public):
+					this.instance.renameVariable(data['old'], data['now'], data['scp'])
+				else:
+					this.instance.functions[data['fid']].renameVariable(data['old'], data['now'], data['scp'])
+			elif(data['t'] == 'vdl'): # variable.deleted
+				if(data['scp'] == Blackprint.VarScope.Public):
+					this.instance.deleteVariable(data['id'], data['scp'])
+				else:
+					this.instance.functions[data['fid']].deleteVariable(data['id'], data['scp'])
 			elif(data['t'] == 'cfn'): # create function.new
 				this.instance.createFunction(data['id'], {
 					'title': data['ti'],
 					'description': data['dsc']
 				})
+			elif(data['t'] == 'frn'): # function.renamed
+				this.instance.renameFunction(data['old'], data['now'])
+			elif(data['t'] == 'fdl'): # function.deleted
+				this.instance.deleteFunction(data['id'])
+			elif(data['t'] == 'cev'): # create event.new
+				this.instance.events.createEvent(data['nm'])
+			elif(data['t'] == 'evrn'): # event.renamed
+				this.instance.events.renameEvent(data['old'], data['now'])
+			elif(data['t'] == 'evdl'): # event.deleted
+				this.instance.events.deleteEvent(data['nm'])
+			elif(data['t'] == 'evfcr'): # create event.field.new
+				this.instance.events.list[data['nm']].used[0].createField(data['name'])
+			elif(data['t'] == 'evfrn'): # event.field.renamed
+				this.instance.events.list[data['nm']].used[0].renameField(data['old'], data['now'])
+			elif(data['t'] == 'evfdl'): # event.field.deleted
+				this.instance.events.list[data['nm']].used[0].deleteField(data['name'])
+			elif(data['t'] == 'rajs'):
+				if(this._RemoteJSON_Respond == None):
+					this._skipEvent = False
+					return # This instance doesn't requesting the data
+				if(data['d'] != None):
+					this._RemoteJSON_Respond(data['d'])
+				else:
+					this._RemoteJSON_Reject(data.get('error', "Peer instance responsed with empty data"))
 			else:
 				this._skipEvent = False
 				return data

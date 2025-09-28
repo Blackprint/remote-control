@@ -49,7 +49,7 @@ def getRegisteredNodes(options={}):
 			if(type == None): type = getTypeFullName(portType)
 
 			types.append(type)
-		
+
 		return types
 
 	def extractType(store, ports):
