@@ -12,7 +12,6 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 globalThis.window = globalThis;
-globalThis.fetch = await import('node-fetch');
 
 let port = 2345;
 let httpServer = createServer();
@@ -67,6 +66,10 @@ console.log(`Waiting connection on port: ${port}`);
 httpServer.listen(port);
 
 // Blackprint.loadModuleFromURL([
-// 	"http://localhost:6789/dist/nodes-console.mjs?1676988045346",
-// 	"http://localhost:6789/dist/nodes-data.mjs?1676988045346",
+// 	"http://localhost:6789/dist/nodes-console.mjs",
+// 	"http://localhost:6789/dist/nodes-data.mjs",
+// ]);
+
+// Blackprint.loadModuleFromURL([
+// 	"http://localhost:6789/dist/nodes-example.mjs",
 // ]);

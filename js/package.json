@@ -1,7 +1,7 @@
 {
   "name": "@blackprint/remote-control",
   "description": "Blackprint remote control",
-  "version": "0.1.12",
+  "version": "0.2.0",
   "author": "Blackprint",
   "license": "MIT",
   "repository": {
@@ -18,7 +18,6 @@
     "test": "echo \"Not implemented\""
   },
   "devDependencies": {
-    "node-fetch": "^3.2.0",
-    "socket.io": "^4.4.1"
+    "socket.io": "^4.8.1"
   }
 }
