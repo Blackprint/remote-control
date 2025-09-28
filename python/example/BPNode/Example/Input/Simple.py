@@ -1,5 +1,5 @@
 import Blackprint
-from ...utils import colorLog
+from ..utils import colorLog
 
 @Blackprint.registerNode('Example/Input/Simple')
 class Simple(Blackprint.Node):
@@ -33,10 +33,8 @@ class Simple(Blackprint.Node):
 	def syncIn(this, id, data):
 		if(id == 'data'):
 			this.iface.data.value = data['value']
-			this.iface.changed(data['value'])
 		elif(id == 'value'):
 			this.iface.data.value = data
-			this.iface.changed(data)
 
 class InputIFaceData:
 	def __init__(this, iface):

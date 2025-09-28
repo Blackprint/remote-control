@@ -8,7 +8,7 @@ import datetime
 
 import os
 ignore_directory = { 'Blender' }
-Blackprint.ModuleLoader.AddModulePathHotReload(os.path.dirname(__file__) + '/BPNode', lambda path: remote.notifyPuppetNodeListReload({'file': path}), ignore_directory)
+Blackprint.ModuleLoader.add_path_hot_reload(os.path.dirname(__file__) + '/BPNode', lambda path: remote.notifyPuppetNodeListReload({'file': path}), ignore_directory)
 
 instance = Blackprint.Engine()
 remote = BlackprintRC.RemoteEngine(instance)
