@@ -26,7 +26,7 @@ class RemoteEngine extends RemoteBase {
 		});
 
 		let evExecPaused;
-		instance.on('execution.paused', evExecPaused = ({ 
+		instance.on('execution.paused', evExecPaused = ({
 			afterNode,
 			beforeNode,
 			cable,
@@ -102,8 +102,8 @@ class RemoteEngine extends RemoteBase {
 	}
 
 	async onSyncIn(data, _parsed){
-		if(!_parsed)
-			data = await super.onSyncIn(data);
+		if(this._skipEvent) return; // Skip incoming event until this flag set to false
+		if(!_parsed) data = await super.onSyncIn(data);
 
 		if(data == null) return;
 		if(data.w === 'skc') return; // Skip any sketch event
@@ -324,7 +324,7 @@ class RemoteEngine extends RemoteBase {
 			}
 			else if(data.t === 'jsonim'){
 				this._skipEvent = true;
-				await instance.importJSON(data.raw, {appendMode: data.app});
+				await instance.importJSON(data.data, {appendMode: data.app});
 				this._skipEvent = false;
 			}
 			else if(data.t === 'pdc'){

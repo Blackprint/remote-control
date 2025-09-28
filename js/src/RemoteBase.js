@@ -16,7 +16,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 
 	_resync(which){
 		if(this.stopSync) return;
-		this.stopSync = true;
+		this._skipEvent = true;
 
 		setTimeout(()=> {
 			this.emit("need.sync", { unsynced: which });
@@ -205,7 +205,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 		if(this._syncInWait.length === 0)
 			this._syncInWait = null;
 	}
-	
+
 	nodeSyncOut(node, id, data='', force=false){
 		let instance = node.instance.rootInstance || node.instance;
 		if(instance._remote == null || (!force && node._syncronizing) || instance.syncDataOut === false)
@@ -240,6 +240,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 	}
 
 	async onSyncIn(data){
+		if(this._skipEvent) return; // Skip incoming event until this flag set to false
 		if(data.w === 'skc') return;
 
 		// data = JSON.parse(data);

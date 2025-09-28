@@ -12,7 +12,7 @@ class RemoteControl extends RemoteBase {
 		let { ifaceList } = instance;
 
 		let evJsonImporting;
-		instance.on('json.importing', evJsonImporting = ({ appendMode, raw }) => {
+		instance.on('json.importing', evJsonImporting = ({ appendMode, data }) => {
 			if(this._skipEvent || this.stopSync) return;
 			this._skipEvent = true;
 
@@ -20,12 +20,12 @@ class RemoteControl extends RemoteBase {
 				w:'ins',
 				t:'jsonim',
 				app: appendMode,
-				raw,
+				data,
 			});
 		});
 
 		let evJsonImported;
-		instance.on('json.imported', evJsonImported = ({ appendMode, raw }) => {
+		instance.on('json.imported', evJsonImported = ({ appendMode, data }) => {
 			this._skipEvent = false;
 			if(this._skipEvent || this.stopSync) return;
 		});
@@ -419,6 +419,7 @@ class RemoteControl extends RemoteBase {
 	}
 
 	async onSyncIn(data){
+		if(this._skipEvent) return; // Skip incoming event until this flag set to false
 		if(data.w === 'skc') {
 			if(data.t === 'puppetnode.reload'){
 				this._onSyncOut({w:'ins', t:'puppetnode.ask'});
@@ -656,7 +657,7 @@ class RemoteControl extends RemoteBase {
 			}
 			else if(data.t === 'jsonim'){
 				this._skipEvent = true;
-				await instance.importJSON(data.raw, {appendMode: data.app});
+				await instance.importJSON(data.data, {appendMode: data.app});
 				this._skipEvent = false;
 			}
 			else if(data.t === 'pdc'){

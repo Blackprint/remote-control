@@ -229,7 +229,7 @@ class RemoteSketch extends RemoteControl {
 			cable._evDisconnected = true;
 			that._onSyncOut({uid, w:'skc', t:'cd', fid, ci});
 		});
-		
+
 		let edNodeComment;
 		instance.on('_editor.node.comment', edNodeComment = ({ iface }) => {
 			if(that._skipEvent || this.stopSync) return;
@@ -316,6 +316,8 @@ class RemoteSketch extends RemoteControl {
 	}
 
 	async onSyncIn(data){
+		if(this._skipEvent) return; // Skip incoming event until this flag set to false
+
 		data = await super.onSyncIn(data);
 		if(data == null) return;
 
@@ -430,9 +432,9 @@ class RemoteSketch extends RemoteControl {
 					else {
 						let portList = iface[data.s];
 						let port = portList[data.n];
-	
+
 						let el = portList._portList.getElement(port);
-	
+
 						this._skipEvent = true;
 						let rect = port.findPortElement(el).getBoundingClientRect();
 						let cable = port.createCable(rect);
