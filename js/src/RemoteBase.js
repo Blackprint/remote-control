@@ -89,7 +89,7 @@ class RemoteBase extends Blackprint.Engine.CustomEvent {
 
 				if(list.length === 0) return;
 				setTimeout(() => {
-					for (let i=0; i < list.length; i++) this._onSyncOut(list);
+					for (let i=0; i < list.length; i++) this._onSyncOut(list[i]);
 				}, 1);
 			}
 		});

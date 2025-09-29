@@ -173,9 +173,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 	constructor(node){
 		super(node);
 		this._interfaces = {};
-		this.data = {
-			optional_out: {},
-		};
+		this.data = {};
 		this.hasInterfaceContent = false;
 
 		// text_out, text_in, picture_out, picture_in, file_out, file_in, button_in
@@ -201,20 +199,24 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			{type: "button_in", port_output: "TriggerField"},
 			*/
 		];
+		this._interfaceSync = {};
 	}
 	init(){
 		let sync = this.interfaceSync;
 		let _interfaces = this._interfaces;
-		let optional_out = this.data.optional_out;
+		let optional_out = this.data.optional_out ?? {};
 
 		for (let i=0; i < sync.length; i++) {
 			let temp = sync[i];
+			this._interfaceSync[temp.id] = temp;
 
 			if(temp.id != null) {
 				sf.Obj.set(_interfaces, temp.id, temp);
 				this.hasInterfaceContent = true;
 
 				if(temp.optional === true) {
+					optional_out = this.data.optional_out ??= {};
+
 					let enabled = optional_out[temp.id] ??= false;
 					if(enabled) this.node.syncOut(temp.id, {request: true});
 					_interfaces.$el(temp.id).css('display', enabled ? '' : 'none');
@@ -240,7 +242,7 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 						});
 
 						let FR = new FileReader();
-						FR.addEventListener("load", ev => el.find('img')[0].src = ev.target.result); 
+						FR.addEventListener("load", ev => el.find('img')[0].src = ev.target.result);
 						FR.readAsDataURL(file);
 					});
 				}
@@ -384,6 +386,20 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 
 		return encoded;
 	}
+	imported(data){
+		if(!data) return;
+
+		let sync = this._interfaceSync;
+		if(sync) for (let key in sync) {
+			let temp = sync[key];
+			let val = data[key];
+			if(temp.save && val != null){
+				if(temp.type === 'text_in') this._interfaces.$el('textarea', temp.id).val(val); // value
+				if(temp.type === 'checkbox_in') this._interfaces.$el('input', temp.id).val(val); // checked
+				if(temp.type === 'dropdown_in') this._interfaces.$el('select', temp.id).val(val); // selectedOptions
+			}
+		}
+	}
 	syncIn(id, data){
 		let item = this._interfaces[id];
 		if(item == null) return; // Skip node data sync from remote
@@ -463,5 +479,9 @@ Blackprint.Sketch.registerInterface("BPIC/BPRemote/PuppetNode", {
 			this._interfaces.$el('button', id)[0].fileData = bytes;
 		}
 	}
-	syncOut(id, data){ this.node.syncOut(id, data) }
+	syncOut(id, data){
+		let sync = this._interfaceSync[id];
+		if(sync.save) this.data[id] = data;
+		this.node.syncOut(id, data);
+	}
 });

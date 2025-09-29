@@ -39,7 +39,7 @@ Blackprint.PuppetNode = {
 				let portType = port.portType ?? port;
 				let typeIndex = '';
 				let isNativeType = false;
-	
+
 				if(nativeTypeList.has(portType)) {
 					portType = nativeTypeList.get(portType);
 					isNativeType = true;
@@ -51,7 +51,7 @@ Blackprint.PuppetNode = {
 						typeIndex = typeList.length - 1;
 					}
 				}
-	
+
 				let type = portType.name;
 				if(!isNativeType) type = `${portType.name}_${typeIndex}`;
 
@@ -204,7 +204,7 @@ Blackprint.PuppetNode = {
 							for (let key in docs.input) {
 								iface.input[key].docs = input[key] = { description: docs.input[key] };
 							}
-	
+
 							let output = iface.docs.output = {};
 							for (let key in docs.output) {
 								iface.output[key].docs = output[key] = { description: docs.input[key] };
