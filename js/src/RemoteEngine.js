@@ -67,11 +67,14 @@ class RemoteEngine extends RemoteBase {
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
+			let input = cable.input;
+			let output = cable.output;
+
 			this._onSyncOut({
 				w:'c',
 				fid,
-				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
-				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
+				inp:{i: ifaceList.indexOf(input.iface), s: input.source, n: input.name, nr: input.iface.node.routes === input}, // nr=node route
+				out:{i: ifaceList.indexOf(output.iface), s: output.source, n: output.name, nr: output.iface.node.routes === output}, // nr=node route
 				t:'f'
 			});
 		});

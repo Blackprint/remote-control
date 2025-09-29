@@ -38,11 +38,14 @@ function RemoteEngine.new(instance)
 		local fid = Utils.getFunctionId(cable.output.iface)
 		local ifaceList = cable.owner.iface.node.instance.ifaceList
 
+		local input_ = cable.input
+		local output_ = cable.output
+
 		this:_onSyncOut({
 			w = 'c',
 			fid = fid,
-			inp = {i = ifaceList:indexOf(cable.input.iface), s = cable.input.source, n = cable.input.name},
-			out = {i = ifaceList:indexOf(cable.output.iface), s = cable.output.source, n = cable.output.name},
+			inp = {i = ifaceList:indexOf(input_.iface), s = input_.source, n = input_.name, nr = input_.iface.node.routes == input_}, -- nr=node route
+			out = {i = ifaceList:indexOf(output_.iface), s = output_.source, n = output_.name, nr = output_.iface.node.routes == output_}, -- nr=node route
 			t = 'f'
 		})
 	end

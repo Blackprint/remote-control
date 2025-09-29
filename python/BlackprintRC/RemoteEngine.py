@@ -32,15 +32,18 @@ class RemoteEngine(RemoteBase):
 
 		def evFlowEvent(ev):
 			if(this._skipEvent and (not this._isImporting)): return
-			cable = ev['cable']
+			cable = ev.cable
 			fid = getFunctionId(cable.output.iface)
 			ifaceList = cable.owner.iface.node.instance.ifaceList
+
+			input_ = cable.input
+			output_ = cable.output
 
 			this._onSyncOut({
 				'w': 'c',
 				'fid': fid,
-				'inp':{'i': ifaceList.index(cable.input.iface), 's': cable.input.source, 'n': cable.input.name},
-				'out':{'i': ifaceList.index(cable.output.iface), 's': cable.output.source, 'n': cable.output.name},
+				'inp':{'i': ifaceList.index(input_.iface), 's': input_.source, 'n': input_.name, 'nr': input_.iface.node.routes == input_}, # nr=node route
+				'out':{'i': ifaceList.index(output_.iface), 's': output_.source, 'n': output_.name, 'nr': output_.iface.node.routes == output_}, # nr=node route
 				't':'f'
 			})
 		instance.on('_flowEvent', evFlowEvent)

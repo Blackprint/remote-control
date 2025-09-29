@@ -503,15 +503,22 @@ class RemoteControl extends RemoteBase {
 				return;
 			}
 
-			let portInput = ifaceList[inp.i][inp.s][inp.n];
-			let portOutput = ifaceList[out.i][out.s][out.n];
-			let cables = portInput.cables;
-
 			let cable;
-			for (var i = 0; i < cables.length; i++) {
-				if(cables[i].output === portOutput){
-					cable = cables[i];
-					break;
+			let ifaceInput = ifaceList[inp.i];
+			let ifaceOutput = ifaceList[out.i];
+			let portInput = inp.nr ? ifaceInput.node.routes : ifaceInput[inp.s][inp.n];
+			let portOutput = out.nr ? ifaceOutput.node.routes : ifaceOutput[out.s][out.n];
+
+			if(out.nr){ // node route
+				cable = portOutput.out;
+			}
+			else {
+				let cables = inp.nr ? portInput.in : portInput.cables;
+				for (var i = 0; i < cables.length; i++) {
+					if(cables[i].output === portOutput){
+						cable = cables[i];
+						break;
+					}
 				}
 			}
 
