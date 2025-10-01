@@ -104,12 +104,12 @@ class RemoteBase(Blackprint.CustomEvent):
 				if(data['scp'] == Blackprint.VarScope.Public):
 					this.instance.createVariable(data['id'], {
 						'title': data['ti'],
-						'description': data['dsc']
+						'description': data.get('dsc', '')
 					})
 				else:
 					this.instance.functions[data['fid']].createVariable(data['id'], {
 						'title': data['ti'],
-						'description': data['dsc'],
+						'description': data.get('dsc', ''),
 						'scope': data['scp']
 					})
 			elif(data['t'] == 'vrn'): # variable.renamed
@@ -125,7 +125,7 @@ class RemoteBase(Blackprint.CustomEvent):
 			elif(data['t'] == 'cfn'): # create function.new
 				this.instance.createFunction(data['id'], {
 					'title': data['ti'],
-					'description': data['dsc']
+					'description': data.get('dsc', '')
 				})
 			elif(data['t'] == 'frn'): # function.renamed
 				this.instance.renameFunction(data['old'], data['now'])

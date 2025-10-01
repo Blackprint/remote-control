@@ -126,6 +126,7 @@ Blackprint.PuppetNode = {
 
 		let nodes = Blackprint.nodes;
 		for (let key in nodes) {
+			if(key === 'BP' || key === 'BP_Editor') continue;
 			sf.Obj.delete(nodes, key);
 		}
 

@@ -20,12 +20,18 @@ class RemoteEngine(RemoteBase):
 			fid = getFunctionId(cable.output.iface)
 			ifaceList = cable.owner.iface.node.instance.ifaceList
 
+			try:
+				inputIndex = ifaceList.index(cable.input.iface)
+				outputIndex = ifaceList.index(cable.output.iface)
+			except: # if(inputIndex == -1 or outputIndex == -1): return
+				return # just return as the cable already removed
+
 			cable._evDisconnected = True
 			this._onSyncOut({
 				'w':'c',
 				'fid': fid,
-				'inp':{'i': ifaceList.index(cable.input.iface), 's': cable.input.source, 'n': cable.input.name},
-				'out':{'i': ifaceList.index(cable.output.iface), 's': cable.output.source, 'n': cable.output.name},
+				'inp':{'i': inputIndex, 's': cable.input.source, 'n': cable.input.name},
+				'out':{'i': outputIndex, 's': cable.output.source, 'n': cable.output.name},
 				't':'d'
 			})
 		instance.on('cable.disconnect', evCableDisconnect)
@@ -121,22 +127,22 @@ class RemoteEngine(RemoteBase):
 					this._skipEvent = False
 					return
 				else:
-					inputPort = getattr(ifaceInput, inp['s'])[inp['n']]
-					outputPort = getattr(ifaceOutput, out['s'])[out['n']]
+					inputPort = getattr(ifaceInput, inp['s']).get(inp['n'], None)
+					outputPort = getattr(ifaceOutput, out['s']).get(out['n'], None)
 
 				if(outputPort == None):
 					if(ifaceOutput.namespace == "BP/Fn/Input"):
-						outputPort = ifaceOutput.addPort(inputPort)
+						outputPort = ifaceOutput.addPort(inputPort, None)
 					elif(ifaceOutput.namespace == "BP/Var/Get"):
 						ifaceOutput.useType(inputPort)
-						outputPort = ifaceOutput.output.Val
+						outputPort = ifaceOutput.output['Val']
 
 				if(inputPort == None):
 					if(ifaceInput.namespace == "BP/Fn/Output"):
-						inputPort = ifaceInput.addPort(outputPort)
+						inputPort = ifaceInput.addPort(outputPort, None)
 					elif(ifaceInput.namespace == "BP/Var/Set"):
 						ifaceInput.useType(outputPort)
-						inputPort = ifaceInput.input.Val
+						inputPort = ifaceInput.input['Val']
 
 				inputPort.connectPort(outputPort)
 				this._skipEvent = False

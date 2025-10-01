@@ -57,14 +57,18 @@ class RemoteControl extends RemoteBase {
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
+			let inputIndex = ifaceList.indexOf(cable.input.iface);
+			let outputIndex = ifaceList.indexOf(cable.output.iface);
+			if(inputIndex === -1 || outputIndex === -1) return;
+
 			cable._evDisconnected = true;
 			this.saveSketchToRemote();
 			this._onSyncOut({
 				w:'c',
 				ci,
 				fid,
-				inp:{i: ifaceList.indexOf(cable.input.iface), s: iER ? 'route' : cable.input.source, n: cable.input.name || ''},
-				out:{i: ifaceList.indexOf(cable.output.iface), s: iER ? 'route' : cable.output.source, n: cable.output.name || ''},
+				inp:{i: inputIndex, s: iER ? 'route' : cable.input.source, n: cable.input.name || ''},
+				out:{i: outputIndex, s: iER ? 'route' : cable.output.source, n: cable.output.name || ''},
 				t:'d'
 			});
 		});
@@ -113,6 +117,12 @@ class RemoteControl extends RemoteBase {
 			let ifaceList = ev.iface.node.instance.ifaceList;
 
 			let fid = getFunctionId(ev.iface);
+			if(fid != null){
+				// Check first if the function still attached to parent instance
+				// If not attached, then maybe this event was triggered because the parent node was removed (not modified internally)
+				if(ev.iface.node.instance.parentInterface?._bpDestroy) return;
+			}
+
 			this._onSyncOut({w:'nd', fid, i:ifaceList.indexOf(ev.iface), t:'d'})
 		});
 
@@ -272,7 +282,7 @@ class RemoteControl extends RemoteBase {
 		instance.on('event.deleted', eventDeleted = (ev) => {
 			if(this._skipEvent || this.stopSync) return;
 			this.saveSketchToRemote();
-			this._onSyncOut({w:'ins', t:'evdl', id: ev.reference.id});
+			this._onSyncOut({w:'ins', t:'evdl', nm: ev.reference.namespace});
 		});
 
 		let eventFieldCreated;

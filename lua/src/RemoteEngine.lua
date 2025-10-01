@@ -21,12 +21,16 @@ function RemoteEngine.new(instance)
 		local fid = Utils.getFunctionId(cable.output.iface)
 		local ifaceList = cable.owner.iface.node.instance.ifaceList
 
+		local inputIndex = ifaceList:indexOf(cable.input.iface)
+		local outputIndex = ifaceList:indexOf(cable.output.iface)
+		if(inputIndex == -1 or outputIndex == -1) then return end
+
 		cable._evDisconnected = true
 		this:_onSyncOut({
 			w = 'c',
 			fid = fid,
-			inp = {i = ifaceList:indexOf(cable.input.iface), s = cable.input.source, n = cable.input.name},
-			out = {i = ifaceList:indexOf(cable.output.iface), s = cable.output.source, n = cable.output.name},
+			inp = {i = inputIndex, s = cable.input.source, n = cable.input.name},
+			out = {i = outputIndex, s = cable.output.source, n = cable.output.name},
 			t = 'd'
 		})
 	end
@@ -70,7 +74,7 @@ function RemoteEngine.new(instance)
 	-- 	if(this._skipEvent) return
 
 		-- ask function structure
-		-- this._onSyncOut({w:'ins', t: 'askfns', fid: ev.bpFunction.id })
+		-- this:_onSyncOut({w:'ins', t: 'askfns', fid: ev.bpFunction.id })
 	-- })
 
 	-- instance:on('cable.connecting', cable => {})
@@ -287,7 +291,7 @@ function RemoteEngine:onSyncIn(data, _parsed)
 					self:emit('empty.json.import')
 				else
 					self:emit('sketch.import', {data = data['d']})
-					instance.importJSON(data['d'])
+					instance:importJSON(data['d'])
 					self:emit('sketch.imported', {data = data['d']})
 				end
 				self._isImporting = false

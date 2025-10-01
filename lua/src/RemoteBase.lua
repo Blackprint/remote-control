@@ -13,7 +13,7 @@ RemoteBase.disabled = false
 -- "onSyncOut" function need to be replaced and the data need to be send to remote client
 function RemoteBase.onSyncOut(this, data) end
 function RemoteBase._onSyncOut(this, data) this:onSyncOut(data) end
--- _onSyncOut(this, data): this.onSyncOut(JSON.stringify(data))
+-- _onSyncOut(this, data): this:onSyncOut(JSON.stringify(data))
 
 function RemoteBase._resync(this, which)
 	if which then print(which .. " list was not synced") end
@@ -178,9 +178,9 @@ function RemoteBase:onSyncIn(data)
 				return -- This instance doesn't requesting the data
 			end
 			if data['d'] ~= nil then
-				self._RemoteJSON_Respond(data['d'])
+				self:_RemoteJSON_Respond(data['d'])
 			else
-				self._RemoteJSON_Reject(data['error'] or "Peer instance responsed with empty data")
+				self:_RemoteJSON_Reject(data['error'] or "Peer instance responsed with empty data")
 			end
 		else
 			self._skipEvent = false

@@ -15,12 +15,16 @@ class RemoteEngine extends RemoteBase {
 			let fid = getFunctionId(cable.output.iface);
 			let ifaceList = cable.owner.iface.node.instance.ifaceList;
 
+			let inputIndex = ifaceList.indexOf(cable.input.iface);
+			let outputIndex = ifaceList.indexOf(cable.output.iface);
+			if(inputIndex === -1 || outputIndex === -1) return;
+
 			cable._evDisconnected = true;
 			this._onSyncOut({
 				w:'c',
 				fid,
-				inp:{i: ifaceList.indexOf(cable.input.iface), s: cable.input.source, n: cable.input.name},
-				out:{i: ifaceList.indexOf(cable.output.iface), s: cable.output.source, n: cable.output.name},
+				inp:{i: inputIndex, s: cable.input.source, n: cable.input.name},
+				out:{i: outputIndex, s: cable.output.source, n: cable.output.name},
 				t:'d'
 			});
 		});
