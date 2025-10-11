@@ -136,6 +136,7 @@ class RemoteEngine(RemoteBase):
 					elif(ifaceOutput.namespace == "BP/Var/Get"):
 						ifaceOutput.useType(inputPort)
 						outputPort = ifaceOutput.output['Val']
+					else: raise Exception("Can't find handler for namespace: " + ifaceOutput.namespace)
 
 				if(inputPort == None):
 					if(ifaceInput.namespace == "BP/Fn/Output"):
@@ -143,6 +144,7 @@ class RemoteEngine(RemoteBase):
 					elif(ifaceInput.namespace == "BP/Var/Set"):
 						ifaceInput.useType(outputPort)
 						inputPort = ifaceInput.input['Val']
+					else: raise Exception("Can't find handler for namespace: " + ifaceInput.namespace)
 
 				inputPort.connectPort(outputPort)
 				this._skipEvent = False

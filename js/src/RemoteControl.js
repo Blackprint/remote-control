@@ -327,13 +327,10 @@ class RemoteControl extends RemoteBase {
 			this._onSyncOut({w:'ins', t:'envdl', key: ev.key});
 		});
 
-		// ToDo: change below to `_fn.structure.update` after the engine was updated
 		let saveFnStructureChanges, saveFnStructureChangesDebounce;
-		instance.on('cable.connect cable.disconnect node.created node.delete node.move node.id.changed port.default.changed _port.split _port.unsplit _port.resync.allow _port.resync.disallow', saveFnStructureChanges = (ev) => {
-			let bpFunction = ev.port?.iface.node.instance.parentInterface?.bpFunction;
-			if(bpFunction == null) bpFunction = ev.iface?.node.instance.parentInterface?.bpFunction;
-			if(bpFunction == null) bpFunction = ev.cable?.owner.iface.node.instance.parentInterface?.bpFunction;
-			if(bpFunction == null) return;
+		instance.on('_fn.structure.update', saveFnStructureChanges = (ev) => {
+			let bpFunction = ev.iface.node.bpFunction;
+			if(bpFunction == null) return console.error("Unable to get bpFunction from: ", ev);
 
 			clearTimeout(saveFnStructureChangesDebounce);
 			saveFnStructureChangesDebounce = setTimeout(() => {

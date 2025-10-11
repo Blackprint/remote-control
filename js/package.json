@@ -13,7 +13,7 @@
   },
   "main": "dist/remote-control.min.js",
   "scripts": {
-    "example-remote-engine": "node --loader ./../../engine-js/es6-https-loader.mjs ./example/remote-engine.mjs",
+    "example-remote-engine": "node --import ./../../engine-js/nodejs-loader.js ./example/remote-engine.mjs",
     "example-relay-server": "node ./example/relay-server.js",
     "test": "echo \"Not implemented\""
   },
