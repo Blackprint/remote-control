@@ -12,6 +12,12 @@
     "url": "https://github.com/Blackprint/remote-control/issues"
   },
   "main": "dist/remote-control.min.js",
+  "exports": {
+    ".": {
+      "require": "./dist/remote-control.min.js"
+    },
+    "./wrapper/remote-engine": "./wrapper/remote-engine.js"
+  },
   "scripts": {
     "example-remote-engine": "node --import ./../../engine-js/nodejs-loader.js ./example/remote-engine.mjs",
     "example-relay-server": "node ./example/relay-server.js",
