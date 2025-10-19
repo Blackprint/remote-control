@@ -1,20 +1,28 @@
 # Blackprint - Remote Control
 This module will provide an ability for Blackprint to control engine remotely and can be used for multi-user collaboration
 
-> Not for production!<br>
-> Please remove this feature if you're going to ship your product, unless you know what you're doing. This module gives ability to remotely control your software, you will need a sandboxed environment and permission based system in order to ship to production..
+> ⚠️ **Production Warning**<br>
+> This module is **not intended for production use** without proper security measures. If you plan to ship this feature in a production environment, you must implement:
+>
+> - **Sandboxed Environment**: Isolate the remote control functionality in a secure sandbox
+> - **Permission-Based System**: Implement proper authentication and authorization
+> - **Input Validation**: Validate all incoming remote commands and data
+> - **Rate Limiting**: Prevent abuse and denial-of-service attacks
+> - **Secure Communication**: Use encrypted connections and proper certificate validation
+>
+> **Recommendation**: Remove this feature entirely from production builds unless you have implemented comprehensive security measures and understand the risks involved. Remote control capabilities can expose your application to significant security vulnerabilities if not properly secured.
 
 Any ports data flow for sketch will be disabled if it's connected to remote engine. It's not recommended to combine different data flow between `remote <~> remote` in just one instance, you should create two different instance for them and use feature from other module/library to sync data between the two instance itself.
 
 ```xml
 <script src="https://cdn.jsdelivr.net/npm/scarletsframe@0.35.x/dist/scarletsframe.dev.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/engine@0.7.x"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/remote-control@0.1.x/dist/remote-control.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.7.x/dist/blackprint.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.7.x/dist/blackprint.sf.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/engine@0.10.x"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/remote-control@0.2.x/dist/remote-control.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.10.x/dist/blackprint.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.10.x/dist/blackprint.sf.js"></script>
 <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
 
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.7.x/dist/blackprint.sf.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@blackprint/sketch@0.10.x/dist/blackprint.sf.css">
 ```
 
 ---
